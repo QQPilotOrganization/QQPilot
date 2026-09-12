@@ -30,11 +30,11 @@ bool SmoothMousegoto(unsigned x, unsigned y)
 	{
 		return false;
 	}
-	std::cout << x << "," << y << "\n";
+	//std::cout << x << "," << y << "\n";
 	POINT startPosition;
 	BOOL success=GetCursorPos(&startPosition);
-	std::cout << startPosition.x << "\n";
-	std::cout << startPosition.y << "\n";
+	//std::cout << startPosition.x << "\n";
+	//std::cout << startPosition.y << "\n";
 	if ( not success)
 	{
 		startPosition.x = 0;
@@ -63,8 +63,8 @@ bool SmoothMousegoto(unsigned x, unsigned y)
 		Mousegoto(point.x, point.y);
 		std::this_thread::sleep_for(std::chrono::milliseconds(point.wait-waitbefore));
 		waitbefore = point.wait;
-		std::cout <<
-			"|" << point.x << "," << point.y << "|" << point.wait << std::endl;
+		//std::cout <<
+		//	"|" << point.x << "," << point.y << "|" << point.wait << std::endl;
 	}
 	return true;
 }
