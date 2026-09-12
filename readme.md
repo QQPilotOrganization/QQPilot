@@ -43,7 +43,7 @@ QQPilot 是一个全自动的 QQ 聊天机器人，通过以下流程实现智�
 ## 安装指南
 
 ### 步骤 1：下载项目
-确保已经安装[.NET10](https://dotnet.microsoft.com/en-us/download/dotnet/thank-you/sdk-10.0.203-windows-x64-installer)
+~确保已经安装[.NET10](https://dotnet.microsoft.com/en-us/download/dotnet/thank-you/sdk-10.0.203-windows-x64-installer)~
 
 前往 [Releases 页面](https://github.com/Na2Cr2O7/QQPilot/releases) 下载最新压缩包并解压。
 
@@ -258,9 +258,14 @@ ollama pull minicpm-v4.6:1b
 
 ## 🛠️ 编译说明（开发者）
 
-使用 **Visual Studio 2026** 打开并编译以下解决方案（仅Windows）：
+使用 **Visual Studio 2026** 打开并编译解决方案：
 - `VisionQQ_C.slnx`
-- `QQPilot4\QQPilot4.slnx`
+
+使用你的rustIDE打开并编译:
+
+- `qqpilot5`
+
+- `option3`
 
 ---
 
