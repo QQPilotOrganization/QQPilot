@@ -1,0 +1,27 @@
+[package]
+name = "qqpilot5"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+configparser = "3.3.0"
+regex = "1.13.1"
+# native-tls keeps the build free of a C/cmake toolchain on Windows (schannel).
+reqwest = { version = "0.13.5", default-features = false, features = [
+    "blocking",
+    "json",
+    "native-tls",
+] }
+libloading = "0.8"
+# preserve_order 让 extra.json 的键序与 C# 版保持一致（含 dest.json / 写回日志）。
+serde_json = { version = "1", features = ["preserve_order"] }
+percent-encoding = "2"
+base64 = "0.22"
+md-5 = "0.10"
+arboard = { version = "3", default-features = false }
+chrono = "0.4"
+rand = "0.9"
+windows-sys = { version = "0.61", features = [
+    "Win32_Foundation",
+    "Win32_System_Console",
+] }
