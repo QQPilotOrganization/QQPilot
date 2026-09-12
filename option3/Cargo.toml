@@ -1,0 +1,15 @@
+[package]
+name = "option3"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# high-dpi 让 builder 里的坐标按"逻辑像素"处理并自动换算成物理像素，
+# 与 C# 版 WinForms（SystemAware + AutoScaleMode.Font）在高分屏上的表现一致。
+native-windows-gui = { version = "1.0.13", features = ["high-dpi"] }
+native-windows-derive = "1.0.5"
+# indexmap 特性用于保持 config.ini 里的键顺序，写回时不会打乱文件。
+configparser = { version = "3.3.0", features = ["indexmap"] }
+# 只为了 GetWindowRect / GetClientRect：把 C# 的 ClientSize 换算成窗口外框尺寸。
+# native-windows-gui 本身就依赖 winapi 0.3，不会多引入东西。
+winapi = { version = "0.3", features = ["winuser"] }

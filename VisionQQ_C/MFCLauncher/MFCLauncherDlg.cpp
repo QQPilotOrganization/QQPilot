@@ -105,7 +105,7 @@ void CMFCLauncherDlg::OnBnClickedOk()
 void CMFCLauncherDlg::OnBnClickedButton1()
 {
 	//system("start run.exe");
-	run(L"QQPilot4.exe");
+	run(L"QQPilot5.exe");
 }
 
 void CMFCLauncherDlg::OnBnClickedButton4()
@@ -130,7 +130,7 @@ bool run(const wchar_t* fn)
 
 void CMFCLauncherDlg::OnBnClickedButton3()
 {
-    run(L"Option2.exe");
+    run(L"Option3.exe");
 	
 }
 
@@ -145,7 +145,7 @@ void CMFCLauncherDlg::OnBnClickedButton2()
 	//run(L"扩展管理器.exe");
 	// TODO: 在此添加控件通知处理程序代码
 }
-
+													
 void CMFCLauncherDlg::OnBnClickedOk2()
 {
 	// TODO: 在此添加控件通知处理程序代码
