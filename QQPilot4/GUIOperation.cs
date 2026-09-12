@@ -31,6 +31,10 @@ namespace QQPilot4
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         private delegate bool MousegotoDelegate(uint x, uint y);
 
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate bool SmoothMousegotoDelegate(uint x, uint y);
+
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         private delegate bool LclickDelegate(uint x, uint y);
 

@@ -49,5 +49,5 @@ public:
     }
 
     std::vector<MousePoint> GeneratePoints(MouseSettings settings);
-    std::generator<MousePoint> YieldPoints(MouseSettings settings);
+    //std::generator<MousePoint> YieldPoints(MouseSettings settings);
 };
