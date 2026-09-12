@@ -43,15 +43,15 @@ bool SmoothMousegoto(unsigned x, unsigned y)
 	WindMouse windMouse(10);
 	MouseSettings mouseSettings{ startPosition.x,startPosition.y,x,y };
 
-	mouseSettings.gravity = 5.0;
-	mouseSettings.wind = 2.0;
-	mouseSettings.maxStep = 20;
-	mouseSettings.targetArea = 20.0;
+	mouseSettings.gravity = 16.0f;
+	mouseSettings.wind = 1.0f;
+	mouseSettings.maxStep = 60;
+	mouseSettings.targetArea = 20.0f;
 	mouseSettings.minWait = 1;
-	mouseSettings.maxWait = 1;
+	mouseSettings.maxWait = 2;
 
 	float distance = std::hypot(std::abs(static_cast<float>(x) - static_cast<float>(startPosition.x)), std::abs(static_cast<float>(y) - static_cast<float>(startPosition.y)));
-	float split =40;
+	float split =50;
 	split = std::floorf(split);
 
 	std::cout << split<< std::endl;

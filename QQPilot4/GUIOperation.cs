@@ -32,8 +32,8 @@ namespace QQPilot4
         private delegate bool MousegotoDelegate(uint x, uint y);
 
 
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        private delegate bool SmoothMousegotoDelegate(uint x, uint y);
+        [DllImport("InputEvent.dll", CallingConvention = CallingConvention.Cdecl)]
+        public static extern bool SmoothMousegoto(uint x, uint y);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         private delegate bool LclickDelegate(uint x, uint y);
@@ -64,6 +64,7 @@ namespace QQPilot4
 
         // === 函数指针缓存 ===
         private static MousegotoDelegate _mouseGoto;
+        //private static SmoothMousegotoDelegate _smoothMouseGoto;
         private static LclickDelegate _lClick;
         private static DragFromToDelegate _dragFromTo;
         private static ScrollUpDownDelegate _scrollUp, _scrollDown;
@@ -146,7 +147,11 @@ namespace QQPilot4
 
         // === 封装函数 ===
         public static bool MouseMove(int x, int y) => _mouseGoto((uint)x, (uint)y);
-        public static bool Click(int x, int y) => _lClick((uint)x, (uint)y);
+        public static bool Click(int x, int y){
+            SmoothMousegoto((uint)x, (uint)y);
+           return  _lClick((uint) x, (uint) y);
+        
+        }
         public static bool ClickCenter((int,int,int,int) area)
         {
             var (x, y) = getAreaCenter(area);
@@ -155,13 +160,6 @@ namespace QQPilot4
 
         public static bool DragFromTo(int x1, int y1, int x2, int y2, float duration = 0.1f) =>
             _dragFromTo((uint)x1, (uint)y1, (uint)x2, (uint)y2, duration);
-        public static void DragFromTo2(int x1, int y1, int x2, int y2)
-        {
-            MouseMove(x1, y1);
-            MouseDown();
-            MouseMove(x2, y2);
-            Thread.Sleep(ScrollCount);
-        }
 
         public static bool ScrollUp(int delta = WHEEL_DELTA) => _scrollUp(delta);
         public static bool ScrollDown(int delta = WHEEL_DELTA) => _scrollDown(delta);
@@ -277,7 +275,12 @@ namespace QQPilot4
             }
         }
 
-        public static void Goto(int x, int y) => MouseMove(x, y);
+        public static void Goto(int x, int y)
+        {
+            SmoothMousegoto((uint)x, (uint)y);
+               
+        
+        }
         public static (int,int) getAreaCenter((int, int, int, int) area)
         {
             int pos1 = area.Item1 + ((area.Item3 - area.Item1) % 2);
@@ -339,11 +342,14 @@ namespace QQPilot4
 
         public static void DragFromToSimple(int x1, int y1, int x2, int y2)
         {
-            MouseMove(x1, y1);
+            SmoothMousegoto((uint)x1, (uint)y1);
+            //MouseMove(x1, y1);
             Thread.Sleep(100);
             MouseDown();
             Thread.Sleep(100);
-            MouseMove(x2, y2);
+            //MouseMove(x2, y2);
+            SmoothMousegoto((uint)x2, (uint)y2);
+
             Thread.Sleep(ScrollCount * 1000); 
             MouseUp();
         }
