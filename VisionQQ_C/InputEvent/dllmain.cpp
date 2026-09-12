@@ -34,7 +34,10 @@ bool dragFromTo(unsigned x1, unsigned y1, unsigned x2, unsigned y2, float durati
 extern "C" __declspec(dllexport)
 bool scrollUp(int delta );
 
-extern "C" __declspec(dllexport)
+extern "C"       __declspec(dllexport)
+bool SmoothMousegoto(unsigned x, unsigned y);
+
+__declspec(dllexport)
 bool scrollDown(int delta );
 
 extern "C" __declspec(dllexport)

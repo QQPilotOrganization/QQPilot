@@ -7,6 +7,10 @@
 extern "C" __declspec(dllexport)
 bool Mousegoto(unsigned x, unsigned y)
 {
+	if (x > 32768 or y > 32768)
+	{
+		return false;
+	}
 	INPUT input = { 0 };
 	input.type = INPUT_MOUSE;
 	int cx = GetSystemMetrics(SM_CXSCREEN);
@@ -22,8 +26,15 @@ bool Mousegoto(unsigned x, unsigned y)
 extern "C" __declspec(dllexport)
 bool SmoothMousegoto(unsigned x, unsigned y)
 {
+	if (x > 32768 or y > 32768)
+	{
+		return false;
+	}
+	std::cout << x << "," << y << "\n";
 	POINT startPosition;
 	BOOL success=GetCursorPos(&startPosition);
+	std::cout << startPosition.x << "\n";
+	std::cout << startPosition.y << "\n";
 	if ( not success)
 	{
 		startPosition.x = 0;
@@ -31,8 +42,30 @@ bool SmoothMousegoto(unsigned x, unsigned y)
 	}
 	WindMouse windMouse(10);
 	MouseSettings mouseSettings{ startPosition.x,startPosition.y,x,y };
+
+	mouseSettings.gravity = 5.0;
+	mouseSettings.wind = 2.0;
+	mouseSettings.maxStep = 20;
+	mouseSettings.targetArea = 20.0;
+	mouseSettings.minWait = 1;
+	mouseSettings.maxWait = 1;
+
+	float distance = std::hypot(std::abs(static_cast<float>(x) - static_cast<float>(startPosition.x)), std::abs(static_cast<float>(y) - static_cast<float>(startPosition.y)));
+	float split =40;
+	split = std::floorf(split);
+
+	std::cout << split<< std::endl;
+	mouseSettings.maxStep = split;
 	std::vector<MousePoint> p=windMouse.GeneratePoints(mouseSettings);
-	
+	int waitbefore = 0;
+	for (auto point : p)
+	{
+		Mousegoto(point.x, point.y);
+		std::this_thread::sleep_for(std::chrono::milliseconds(point.wait-waitbefore));
+		waitbefore = point.wait;
+		std::cout <<
+			"|" << point.x << "," << point.y << "|" << point.wait << std::endl;
+	}
 	return true;
 }
 
@@ -86,7 +119,6 @@ bool dragFromTo(unsigned x1, unsigned y1, unsigned x2, unsigned y2, float durati
 
 	return LmouseUp();
 }
-
 extern "C" __declspec(dllexport)
 bool LmouseDown()
 {
