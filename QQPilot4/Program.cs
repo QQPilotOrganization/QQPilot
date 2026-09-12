@@ -33,7 +33,7 @@ namespace QQPilot4
             //A.GetAnswer(new ChatContent())
             //ConversationStyleExtract.Test();
             //return;
-            DockLog.Init();
+            //DockLog.Init();
             Process? p=null;
             try
             {
@@ -47,7 +47,7 @@ namespace QQPilot4
             //GUIOperation.Init();
             //GUIOperation.Click(3, 3);
             ArrowLoad.StartLoading(ConsoleColor.Green, "正在初始化");
-            DockLog.Log2("正在初始化");
+            //DockLog.Log2("正在初始化");
             GUIOperation.Init();
             IniParser.FileIniDataParser parser = new();
             IniData ini                 = parser.ReadFile("config.ini", new UTF8Encoding(false));
@@ -78,7 +78,7 @@ namespace QQPilot4
             ArrowLoad.StopLoading();
             Console.ResetColor();
 
-            DockLog.Log2("初始化完成");
+            //DockLog.Log2("初始化完成");
             Log.Print("初始化完成");
 
             string OSDescription = System.Runtime.InteropServices.RuntimeInformation.OSDescription;
@@ -100,7 +100,7 @@ namespace QQPilot4
             {
                 Log.Print("自动登录功能已开启");
                 Log.Print("正在尝试登录...");
-                DockLog.Log2("正在尝试登录...");
+                //DockLog.Log2("正在尝试登录...");
 
                 for (int i = 0; i < 4; i++)
                 {
@@ -173,7 +173,7 @@ namespace QQPilot4
             {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Log.Print("\n结束运行");
-                DockLog.Exit();
+                //DockLog.Exit();
                 Console.ResetColor();
                 // 设置 e.Cancel = true 可以阻止程序立即终止，
                 // 允许执行清理逻辑后再退出
@@ -187,7 +187,7 @@ namespace QQPilot4
             while (! cancelled)
             {
                 Console.Write("正在寻找新信息...\r");
-                DockLog.Log2("正在寻找新信息...");
+                //DockLog.Log2("正在寻找新信息...");
                 var chatList = Vision.FullScreenShot();
                 (uint,uint) contain=(0,0);
                 if(ATDetect)
@@ -215,7 +215,7 @@ namespace QQPilot4
                     }
                     Console.ForegroundColor = ConsoleColor.Green;
                     Log.Print($"发现红点: {contain}");
-                    DockLog.Log2($"发现红点: {contain}");
+                    //DockLog.Log2($"发现红点: {contain}");
 
                     Console.ResetColor();
                     GUIOperation.Click((int)contain.Item1, (int)contain.Item2);
@@ -236,7 +236,7 @@ namespace QQPilot4
                     if (points.Count == 0)
                     {
                         Log.Print("使用模板匹配查找复制按钮失败");
-                        DockLog.Log2("使用模板匹配查找复制按钮失败");
+                        //DockLog.Log2("使用模板匹配查找复制按钮失败");
                         for (int i = 0; i < scrollTries * 2; i++)
                         {
                             Thread.Sleep(400);
@@ -281,7 +281,7 @@ namespace QQPilot4
 
                     List<ChatContent> ChatContents = ConversationStyleExtract.ParseChatLog(chatContentStr, characterName);
                     SpinnerLoad.Start(ConsoleColor.Green, "等待语言模型生成答案");
-                    DockLog.Log2("等待语言模型生成答案");
+                    //DockLog.Log2("等待语言模型生成答案");
 
                     GUIOperation.ClickCenter(commentSectionActualSize);
 
@@ -351,19 +351,19 @@ namespace QQPilot4
                     {
 
                         Log.Print("上传图片");
-                        DockLog.Log2("上传图片");
+                        //DockLog.Log2("上传图片");
                         UploadImageWithoutSend(uploadImagePossibleActualSize);
                         Upload.escape();
 
                     }
                     Thread.Sleep(4000);
                     Log.Print("发送消息 🎉");
-                    DockLog.Log2("发送消息 🎉");
+                    //DockLog.Log2("发送消息 🎉");
 
                     GUIOperation.HotKey("ctrl", "enter");
                     Thread.Sleep(4000);
                     Log.Print("退出会话");
-                    //DockLog.Log2("发送消息 🎉");
+                    ////DockLog.Log2("发送消息 🎉");
                     ClearInputSection();
                     GoBack(scale, chatButtonActualPosition, contactButtonActualPosition, copyButtonPossibleActualSize, uploadImagePossibleActualSize);
                     

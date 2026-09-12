@@ -4,8 +4,6 @@
     <Platform Name="ARM64" />
     <Platform Name="x64" />
   </Configurations>
-  <Project Path="../DockLog3/DockLog3.vbproj" Id="42cb8e60-940d-4266-abb3-d7524366d96f" />
-  <Project Path="../Download/Download.csproj" Id="f7e3835e-4442-440b-a7b0-af042debd160" />
   <Project Path="../QQPilotGUISharp/Option2.csproj" Id="ebb66693-38c8-46bd-b1b3-842cf48141da">
     <Platform Solution="*|ARM64" Project="ARM64" />
     <Platform Solution="*|x64" Project="x64" />

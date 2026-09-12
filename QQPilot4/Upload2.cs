@@ -15,7 +15,7 @@ namespace QQPilot4
             if (copyButtonPosition.Count <= 0)
             {
                 Log.Print("使用模板匹配查找上传图片按钮失败");
-                DockLog.Log2("使用模板匹配查找上传图片按钮失败");
+                //DockLog.Log2("使用模板匹配查找上传图片按钮失败");
 
                 Process.Start("uploadImage2.exe").WaitForExit();
                 Thread.Sleep(200);
@@ -43,7 +43,7 @@ namespace QQPilot4
             if (copyButtonPosition.Count <= 0)
             {
                 Log.Print("使用模板匹配查找上传图片按钮失败");
-                DockLog.Log2("使用模板匹配查找上传图片按钮失败");
+                //DockLog.Log2("使用模板匹配查找上传图片按钮失败");
 
                 Process.Start("uploadImage2.exe").WaitForExit();
                 Thread.Sleep(200);
