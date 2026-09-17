@@ -31,7 +31,7 @@ use positions::{PointI, RectI};
 use upload_content::UploadContent;
 use windows_version::OsVersion;
 
-use crate::sleep::{ms, ms_output};
+use crate::sleep::{ ms_output};
 
 /// 自动聚焦线程是否继续运行。
 static AUTO_FOCUS_SHOULD_RUN: AtomicBool = AtomicBool::new(true);
