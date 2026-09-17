@@ -86,6 +86,8 @@ pub struct Config {
     pub system_prompt: String,
     /// extra.json 的内容，会合并进请求体。
     pub extra: Map<String, Value>,
+    
+    pub sleep:u32,
 }
 
 impl Default for Config {
@@ -113,6 +115,7 @@ impl Default for Config {
             force_ollama_api: false,
             system_prompt: String::new(),
             extra: Map::new(),
+            sleep:0
         }
     }
 }
@@ -160,6 +163,7 @@ impl Config {
             force_ollama_api: get_bool(&ini, "forceollamaapi", d.force_ollama_api),
             system_prompt: load_system_prompt(SYSTEM_PROMPT_FILE),
             extra: load_extra(EXTRA_FILE),
+            sleep:(get_int(&ini, "sleep", 0 )).min(0) as u32
         }
     }
 }
@@ -296,7 +300,7 @@ mod tests {
              autofocusing = true\natdetect = true\nsendimagepossibility = 42\n\
              isvisionmodel = true\nmaximagecount = 7\nmodelname = qwen3.5:0.8b\n\
              server_url = builtin\napi_key = abcd\nremote_server_timeout = 300\n\
-             forceollamaapi=true\n",
+             forceollamaapi=true\nsleep=300\n",
         );
 
         let config = Config::load(&path);
@@ -317,6 +321,7 @@ mod tests {
         assert_eq!(config.server_url, "builtin");
         assert_eq!(config.api_key, "abcd");
         assert_eq!(config.remote_server_timeout, 300);
+        assert_eq!(config.sleep, 300);
         assert!(config.force_ollama_api);
     }
 

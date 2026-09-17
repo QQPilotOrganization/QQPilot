@@ -1,12 +1,12 @@
 //! QQPilot5
 
 mod answer;
-mod arrow;
+mod arrow_load;
 mod chat_content;
 mod clipboard;
 mod config;
 mod conversation;
-mod gui;
+mod gui_operation;
 mod log;
 mod native;
 mod positions;
@@ -29,6 +29,9 @@ use answer::Answer;
 use log::Color;
 use positions::{PointI, RectI};
 use upload_content::UploadContent;
+use windows_version::OsVersion;
+
+use crate::sleep::sleep_ms;
 
 /// 自动聚焦线程是否继续运行。
 static AUTO_FOCUS_SHOULD_RUN: AtomicBool = AtomicBool::new(true);
@@ -44,7 +47,12 @@ unsafe extern "system" fn console_ctrl_handler(_ctrl_type: u32) -> i32 {
 mod sleep;
 
 fn main() {
-    log::enable_utf8_output();
+    let version_windows=OsVersion::current();
+    println!("{}",version_windows.major);
+    if version_windows.major>8
+    {
+        log::enable_utf8_output();
+    }
 
     // 先让 ScaleToINI.exe 把当前 DPI 缩放写回 config.ini，再统一读取配置。
     let mut scale_process = match Command::new("ScaleToINI.exe").spawn() {
@@ -55,14 +63,14 @@ fn main() {
         }
     };
 
-    arrow::start_loading(Color::Green, "正在初始化");
+    arrow_load::start_loading(Color::Green, "正在初始化");
 
     if let Some(child) = scale_process.as_mut() {
         let _ = child.wait();
     }
 
     // 对应 GUIOperation.Init()：设置 DPI 感知并加载 InputEvent.dll。
-    gui::init();
+    gui_operation::init();
 
     let settings = config::init();
     let character_name = settings.name.clone();
@@ -71,7 +79,9 @@ fn main() {
         Ok(text) => match text.trim().trim_start_matches('\u{feff}').parse() {
             Ok(count) => count,
             Err(_) => {
-                let _ = fs::write("tokencount.txt", "0");
+                if let Err(a) = fs::write("tokencount.txt", "0")  {
+                    log::error(format!("{a}"),);
+                }
                 0
             }
         },
@@ -83,7 +93,7 @@ fn main() {
 
     log::set_color(Color::Cyan);
     log::print(format!("QQPilot {}", settings.version));
-    arrow::stop_loading();
+    arrow_load::stop_loading();
     log::reset();
 
     log::print("初始化完成");
@@ -95,7 +105,7 @@ fn main() {
 
     let auto_focus_thread = thread::spawn(|| {
         while AUTO_FOCUS_SHOULD_RUN.load(Ordering::Relaxed) {
-            gui::focus();
+            gui_operation::focus();
             sleep::sleep_ms(4000);
         }
     });
@@ -118,7 +128,7 @@ fn main() {
                 sleep::sleep_ms(1000);
                 continue;
             }
-            gui::click(x as i32, y as i32);
+            gui_operation::click(x as i32, y as i32);
             sleep::sleep_ms(2000);
         }
         sleep::sleep_ms(1000);
@@ -197,16 +207,16 @@ fn main() {
         log::print(format!("发现红点: {contain:?}"));
         log::reset();
 
-        gui::click(contain.0 as i32, contain.1 as i32);
+        gui_operation::click(contain.0 as i32, contain.1 as i32);
         sleep::sleep_ms(1000);
-        gui::drag_from_to_simple(
+        gui_operation::drag_from_to_simple(
             start_dragging.0,
             start_dragging.1,
             end_dragging.0,
             end_dragging.1,
         );
         sleep::sleep_ms(500);
-        gui::goto_center(conversation);
+        gui_operation::goto_center(conversation);
         sleep::sleep_ms(500);
 
         vision::screenshot(copy_button_possible);
@@ -219,20 +229,20 @@ fn main() {
             log::print("使用模板匹配查找复制按钮失败");
             for _ in 0..(settings.scroll * 2) {
                 sleep::sleep_ms(400);
-                gui::scroll_down(480);
+                gui_operation::scroll_down(480);
             }
             sleep::sleep_ms(400);
 
-            gui::click_center(comment_section);
+            gui_operation::click_center(comment_section);
             for _ in 0..settings.tab_times {
-                gui::tab();
+                gui_operation::tab();
                 sleep::sleep_ms(400);
             }
-            gui::press_key("enter");
+            gui_operation::press_key("enter");
             sleep::sleep_ms(200);
         } else {
             sleep::sleep_ms(800);
-            gui::click(
+            gui_operation::click(
                 (copy_points[0].0 + copy_button_possible.0 as u32) as i32,
                 (copy_points[0].1 + copy_button_possible.1 as u32) as i32,
             );
@@ -249,14 +259,16 @@ fn main() {
                 contact_button,
                 copy_button_possible,
                 upload_image_possible,
+                settings.sleep
             );
+            
             continue;
         }
 
         let chat_contents = conversation::parse_chat_log(&chat_content_text, &character_name);
         spinner::start(Color::Green, "等待语言模型生成答案");
 
-        gui::click_center(comment_section);
+        gui_operation::click_center(comment_section);
 
         let model = answer_model.get_or_insert_with(Answer::new);
         let results = model
@@ -283,7 +295,7 @@ fn main() {
             if settings.with_image && settings.send_image_possibility > 0 {
                 log::warn("答案未生成,上传图片");
                 upload_image_without_send(upload_image_possible);
-                gui::hot_key("ctrl", "enter");
+                gui_operation::hot_key("ctrl", "enter");
                 sleep::sleep_ms(4000);
                 log::print("退出会话");
             } else {
@@ -295,14 +307,15 @@ fn main() {
                 contact_button,
                 copy_button_possible,
                 upload_image_possible,
+                settings.sleep
             );
             continue;
         }
 
         spinner::stop();
         sleep::sleep_ms(100);
-        gui::click_center(comment_section);
-        gui::send_text(&result, comment_section);
+        gui_operation::click_center(comment_section);
+        gui_operation::send_text(&result, comment_section);
 
         for image in &images_to_upload {
             log::print("上传获取的图片");
@@ -320,17 +333,18 @@ fn main() {
 
         sleep::sleep_ms(4000);
         log::print("发送消息 🎉");
-        gui::hot_key("ctrl", "enter");
+        gui_operation::hot_key("ctrl", "enter");
         sleep::sleep_ms(4000);
         log::print("退出会话");
 
-        clear_input_section();
+        gui_operation::clear_input_section();
         go_back(
             settings.scale,
             chat_button,
             contact_button,
             copy_button_possible,
             upload_image_possible,
+            settings.sleep
         );
     }
 
@@ -343,12 +357,6 @@ fn main() {
 }
 
 /// 对应 `Program.ClearInputSection`。
-fn clear_input_section() {
-    gui::hot_key("ctrl", "a");
-    sleep::sleep_ms(200);
-    gui::press_key("backspace");
-    sleep::sleep_ms(200);
-}
 
 /// 对应 `Program.UploadImageWithoutSend`：从 exe 目录下的 `Images` 里挑一张图上传。
 fn upload_image_without_send(upload_image_possible: RectI) {
@@ -401,10 +409,11 @@ fn go_back(
     _contact_button: PointI,
     copy_button_possible: RectI,
     upload_image_possible: RectI,
+    sleepms:u32
 ) {
     let mut count = 0;
     loop {
-        gui::click(
+        gui_operation::click(
             chat_button.0 + (100.0 * scale) as i32,
             chat_button.1 + (80.0 * scale) as i32,
         );
@@ -436,4 +445,5 @@ fn go_back(
 
         break;
     }
+    sleep_ms(sleepms as u64);
 }

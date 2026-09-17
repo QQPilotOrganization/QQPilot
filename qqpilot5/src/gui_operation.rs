@@ -11,6 +11,7 @@ use crate::config;
 use crate::log::{self, Color};
 use crate::native;
 use crate::positions::{PointI, RectI};
+use crate::sleep;
 
 /// 对应 `GUIOperation.Init()`：设置 DPI 感知并按需加载 DLL。
 pub fn init() -> bool {
@@ -22,6 +23,12 @@ pub fn init() -> bool {
 }
 
 // --- 鼠标 ---
+pub fn clear_input_section() {
+    hot_key("ctrl", "a");
+    sleep::sleep_ms(200);
+    press_key("backspace");
+    sleep::sleep_ms(200);
+}
 
 /// 对应 `GUIOperation.Click(x, y)`：先平滑移动再左键单击。
 pub fn click(x: i32, y: i32) -> bool {
@@ -31,8 +38,6 @@ pub fn click(x: i32, y: i32) -> bool {
 
 /// 对应 `GUIOperation.getAreaCenter`。
 ///
-/// 注意：C# 版这里写的是 `x1 + ((x2 - x1) % 2)`，得到的是区域左上角偏移 0/1 像素的
-/// 位置，而不是几何中心。为了保持与 C# 版完全一致的行为，这里原样保留。
 pub fn get_area_center(area: RectI) -> PointI {
     let pos1 = area.0 + ((area.2 - area.0) % 2);
     let pos2 = area.1 + ((area.3 - area.1) % 2);

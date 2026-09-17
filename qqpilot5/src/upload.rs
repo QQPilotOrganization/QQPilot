@@ -4,7 +4,7 @@ use std::process::Command;
 use std::thread;
 use std::time::Duration;
 
-use crate::gui;
+use crate::gui_operation;
 use crate::log;
 use crate::native;
 use crate::positions::RectI;
@@ -32,10 +32,10 @@ pub fn upload_image(upload_image_possible_actual_size: RectI) {
         log::print("使用模板匹配查找上传图片按钮失败");
         let _ = Command::new("uploadImage2.exe").status();
         thread::sleep(Duration::from_millis(200));
-        gui::hot_key("ctrl", "v");
+        gui_operation::hot_key("ctrl", "v");
     } else {
         let (x, y) = found[0];
-        gui::click(
+        gui_operation::click(
             (x + upload_image_possible_actual_size.0 as u32) as i32,
             (y + upload_image_possible_actual_size.1 as u32) as i32,
         );
@@ -57,10 +57,10 @@ pub fn upload_selected_image(upload_image_possible_actual_size: RectI, file: &st
         log::print("使用模板匹配查找上传图片按钮失败");
         let _ = Command::new("uploadImage2.exe").status();
         thread::sleep(Duration::from_millis(200));
-        gui::hot_key("ctrl", "v");
+        gui_operation::hot_key("ctrl", "v");
     } else {
         let (x, y) = found[0];
-        gui::click(
+        gui_operation::click(
             (x + upload_image_possible_actual_size.0 as u32) as i32,
             (y + upload_image_possible_actual_size.1 as u32) as i32,
         );

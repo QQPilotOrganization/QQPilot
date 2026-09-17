@@ -44,6 +44,9 @@ pub struct Settings {
     pub force_ollama_api: bool,
     /// 只允许 7 或 8。
     pub tab_times: i32,
+
+    pub sleep:u32,
+
 }
 
 impl Default for Settings {
@@ -68,6 +71,7 @@ impl Default for Settings {
             remote_server_timeout: 300,
             force_ollama_api: false,
             tab_times: 8,
+            sleep:0,
         }
     }
 }
@@ -119,6 +123,7 @@ impl Settings {
             remote_server_timeout: get_i32("remote_server_timeout", d.remote_server_timeout),
             force_ollama_api: get_bool("forceollamaapi", d.force_ollama_api),
             tab_times: get_i32("tab_times", d.tab_times),
+            sleep: (get_i32("sleep", d.tab_times)).min(0) as u32,
         }
     }
 
@@ -143,7 +148,7 @@ impl Settings {
             return Err(format!("读取 {} 失败：{e}", config_path.display()));
         }
 
-        let values: [(&str, String); 18] = [
+        let values: [(&str, String); 19] = [
             ("version", self.version.clone()),
             ("name", self.name.clone()),
             ("width", self.width.to_string()),
@@ -168,6 +173,7 @@ impl Settings {
             ),
             ("forceollamaapi", bool_text(self.force_ollama_api)),
             ("tab_times", self.tab_times.to_string()),
+            ("sleep",self.sleep.to_string())
         ];
         for (key, value) in values {
             ini.set(SECTION, key, Some(value));

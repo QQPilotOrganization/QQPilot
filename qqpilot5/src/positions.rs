@@ -11,11 +11,11 @@
 /// 绝对矩形 `(x1, y1, x2, y2)`。
 pub type RectI = (i32, i32, i32, i32);
 /// 相对矩形 `(x1, y1, x2, y2)`。
-pub type RelRect = (f64, f64, f64, f64);
+pub type RelativeRect = (f64, f64, f64, f64);
 /// 绝对点 `(x, y)`。
 pub type PointI = (i32, i32);
 /// 相对点 `(x, y)`。
-pub type RelPoint = (f64, f64);
+pub type RelativePoint = (f64, f64);
 
 /// 基准分辨率。
 pub const DEFAULT_SIZE: (i32, i32) = (2240, 1260);
@@ -47,42 +47,42 @@ pub const CHAT_BUTTON_ABSOLUTE_POSITION: PointI = (27, 63);
 
 // --- 相对坐标 ---
 
-pub const CHAT_LIST_BBOX_RELATIVE_SIZE: RelRect =
+pub const CHAT_LIST_BBOX_RELATIVE_SIZE: RelativeRect =
     to_relative_rect(CHAT_LIST_BBOX_ABSOLUTE_SIZE, DEFAULT_SIZE);
-pub const CONVERSATION_BBOX_RELATIVE_SIZE: RelRect =
+pub const CONVERSATION_BBOX_RELATIVE_SIZE: RelativeRect =
     to_relative_rect(CONVERSATION_BBOX_ABSOLUTE_SIZE, DEFAULT_SIZE);
-pub const SEND_BUTTON_BBOX_RELATIVE_SIZE: RelRect =
+pub const SEND_BUTTON_BBOX_RELATIVE_SIZE: RelativeRect =
     to_relative_rect(SEND_BUTTON_BBOX_ABSOLUTE_SIZE, DEFAULT_SIZE);
-pub const COMMENT_SECTION_BBOX_RELATIVE_SIZE: RelRect =
+pub const COMMENT_SECTION_BBOX_RELATIVE_SIZE: RelativeRect =
     to_relative_rect(COMMENT_SECTION_BBOX_ABSOLUTE_SIZE, DEFAULT_SIZE);
-pub const EXIT_CONVERSATION_BBOX_RELATIVE_SIZE: RelRect =
+pub const EXIT_CONVERSATION_BBOX_RELATIVE_SIZE: RelativeRect =
     to_relative_rect(EXIT_CONVERSATION_BBOX_ABSOLUTE_SIZE, DEFAULT_SIZE);
-pub const SEND_IMAGE_BBOX_RELATIVE_SIZE: RelRect =
+pub const SEND_IMAGE_BBOX_RELATIVE_SIZE: RelativeRect =
     to_relative_rect(SEND_IMAGE_BBOX_ABSOLUTE_SIZE, DEFAULT_SIZE);
-pub const COPY_BUTTON_BBOX_RELATIVE_SIZE: RelRect =
+pub const COPY_BUTTON_BBOX_RELATIVE_SIZE: RelativeRect =
     to_relative_rect(COPY_BUTTON_BBOX_ABSOLUTE_SIZE, DEFAULT_SIZE);
-pub const AT_PLACE_BBOX_RELATIVE_SIZE: RelRect =
+pub const AT_PLACE_BBOX_RELATIVE_SIZE: RelativeRect =
     to_relative_rect(AT_PLACE_BBOX_ABSOLUTE_SIZE, DEFAULT_SIZE);
-pub const UPLOAD_IMAGE_POSSIBLE_BBOX_RELATIVE_SIZE: RelRect =
+pub const UPLOAD_IMAGE_POSSIBLE_BBOX_RELATIVE_SIZE: RelativeRect =
     to_relative_rect(UPLOAD_IMAGE_POSSIBLE_BBOX_ABSOLUTE_SIZE, DEFAULT_SIZE2);
-pub const COPY_BUTTON_POSSIBLE_BBOX_RELATIVE_SIZE: RelRect =
+pub const COPY_BUTTON_POSSIBLE_BBOX_RELATIVE_SIZE: RelativeRect =
     to_relative_rect(COPY_BUTTON_POSSIBLE_BBOX_ABSOLUTE_SIZE, DEFAULT_SIZE2);
 
-pub const START_DRAGGING_RELATIVE_POSITION: RelPoint =
+pub const START_DRAGGING_RELATIVE_POSITION: RelativePoint =
     to_relative_point(START_DRAGGING_ABSOLUTE_POSITION, DEFAULT_SIZE);
-pub const END_DRAGGING_RELATIVE_POSITION: RelPoint =
+pub const END_DRAGGING_RELATIVE_POSITION: RelativePoint =
     to_relative_point(END_DRAGGING_ABSOLUTE_POSITION, DEFAULT_SIZE);
-pub const CANCEL_BUTTON_RELATIVE_POSITION: RelPoint =
+pub const CANCEL_BUTTON_RELATIVE_POSITION: RelativePoint =
     to_relative_point(CANCEL_BUTTON_ABSOLUTE_POSITION, DEFAULT_SIZE);
-pub const CONTACT_BUTTON_RELATIVE_POSITION: RelPoint =
+pub const CONTACT_BUTTON_RELATIVE_POSITION: RelativePoint =
     to_relative_point(CONTACT_BUTTON_ABSOLUTE_POSITION, DEFAULT_SIZE2);
-pub const CHAT_BUTTON_RELATIVE_POSITION: RelPoint =
+pub const CHAT_BUTTON_RELATIVE_POSITION: RelativePoint =
     to_relative_point(CHAT_BUTTON_ABSOLUTE_POSITION, DEFAULT_SIZE2);
 
 // --- 辅助函数 ---
 
 /// 绝对矩形 -> 相对矩形。
-const fn to_relative_rect(rect: RectI, size: (i32, i32)) -> RelRect {
+const fn to_relative_rect(rect: RectI, size: (i32, i32)) -> RelativeRect {
     (
         rect.0 as f64 / size.0 as f64,
         rect.1 as f64 / size.1 as f64,
@@ -92,7 +92,7 @@ const fn to_relative_rect(rect: RectI, size: (i32, i32)) -> RelRect {
 }
 
 /// 绝对点 -> 相对点。
-const fn to_relative_point(point: PointI, size: (i32, i32)) -> RelPoint {
+const fn to_relative_point(point: PointI, size: (i32, i32)) -> RelativePoint {
     (
         point.0 as f64 / size.0 as f64,
         point.1 as f64 / size.1 as f64,
@@ -102,7 +102,7 @@ const fn to_relative_point(point: PointI, size: (i32, i32)) -> RelPoint {
 /// 相对矩形 -> 实际矩形。
 ///
 /// C# 用的是 `Math.Round`（银行家舍入），所以这里用 `round_ties_even` 保持一致。
-pub fn to_actual_size(relative: RelRect, size: (i32, i32)) -> RectI {
+pub fn to_actual_size(relative: RelativeRect, size: (i32, i32)) -> RectI {
     (
         (relative.0 * size.0 as f64).round_ties_even() as i32,
         (relative.1 * size.1 as f64).round_ties_even() as i32,
@@ -112,7 +112,7 @@ pub fn to_actual_size(relative: RelRect, size: (i32, i32)) -> RectI {
 }
 
 /// 相对点 -> 实际点。
-pub fn to_actual_point(relative: RelPoint, size: (i32, i32)) -> PointI {
+pub fn to_actual_point(relative: RelativePoint, size: (i32, i32)) -> PointI {
     (
         (relative.0 * size.0 as f64).round_ties_even() as i32,
         (relative.1 * size.1 as f64).round_ties_even() as i32,

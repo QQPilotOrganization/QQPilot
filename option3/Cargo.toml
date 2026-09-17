@@ -13,3 +13,22 @@ configparser = { version = "3.3.0", features = ["indexmap"] }
 # 只为了 GetWindowRect / GetClientRect：把 C# 的 ClientSize 换算成窗口外框尺寸。
 # native-windows-gui 本身就依赖 winapi 0.3，不会多引入东西。
 winapi = { version = "0.3", features = ["winuser"] }
+
+
+
+
+
+
+
+
+
+
+
+
+
+[profile.release]
+strip = true
+opt-level = 'z'
+lto = true
+codegen-units = 1
+panic = 'abort'

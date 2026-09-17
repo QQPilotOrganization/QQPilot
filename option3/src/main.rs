@@ -186,12 +186,25 @@ pub struct SettingsApp {
     #[nwg_control(text: "只检查 @", size: (70, 22), position: (11, 413))]
     label_at_detect: nwg::Label,
 
+
+    #[nwg_control(text: "发送完消息后等待 (秒):", size: (180, 22), position: (200, 413)) ]
+    label_sleep: nwg::Label,
+
+    #[nwg_control(text: "", size: (134, 22), position: (360, 413),flags: "VISIBLE|TAB_STOP|NUMBER")]
+    sleep: nwg::TextInput,
+
+
+
     #[nwg_control(text: "", size: (78, 33), position: (86, 408), flags: "VISIBLE|TAB_STOP")]
     at_detect: nwg::CheckBox,
 
     // ---- 超时 / tab 次数 ----
     #[nwg_control(text: "远程服务器超时 (秒):", size: (134, 22), position: (11, 446))]
     label_timeout: nwg::Label,
+
+
+ 
+
 
     #[nwg_control(size: (84, 34), position: (174, 439), flags: "VISIBLE|TAB_STOP|NUMBER")]
     remote_server_timeout: nwg::TextInput,
@@ -336,6 +349,7 @@ impl SettingsApp {
                 Some(text) => text,
                 None => config::reset_token_count().unwrap_or_else(|_| "0".to_string()),
             });
+        self.sleep.set_text(&settings.sleep.to_string());
     }
 
     /// 对应 `Form1.SaveConfig`：把界面上的值攒成 [`Settings`] 并写回文件。
@@ -371,6 +385,7 @@ impl SettingsApp {
             } else {
                 8
             },
+            sleep:read_int(&self.sleep, 0) as u32
         };
 
         if let Err(e) = settings.save(&self.system_text.text()) {

@@ -906,6 +906,7 @@ dependencies = [
  "reqwest",
  "serde_json",
  "windows-sys 0.61.2",
+ "windows-version",
 ]
 
 [[package]]
@@ -1557,6 +1558,15 @@ dependencies = [
  "windows_x86_64_gnu",
  "windows_x86_64_gnullvm",
  "windows_x86_64_msvc",
+]
+
+[[package]]
+name = "windows-version"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e4060a1da109b9d0326b7262c8e12c84df67cc0dbc9e33cf49e01ccc2eb63631"
+dependencies = [
+ "windows-link",
 ]
 
 [[package]]
