@@ -25,9 +25,9 @@ pub fn init() -> bool {
 // --- 鼠标 ---
 pub fn clear_input_section() {
     hot_key("ctrl", "a");
-    sleep::sleep_ms(200);
+    sleep::ms(200);
     press_key("backspace");
-    sleep::sleep_ms(200);
+    sleep::ms(200);
 }
 
 /// 对应 `GUIOperation.Click(x, y)`：先平滑移动再左键单击。

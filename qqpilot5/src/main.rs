@@ -31,7 +31,7 @@ use positions::{PointI, RectI};
 use upload_content::UploadContent;
 use windows_version::OsVersion;
 
-use crate::sleep::sleep_ms;
+use crate::sleep::{ms, ms_output};
 
 /// 自动聚焦线程是否继续运行。
 static AUTO_FOCUS_SHOULD_RUN: AtomicBool = AtomicBool::new(true);
@@ -47,6 +47,10 @@ unsafe extern "system" fn console_ctrl_handler(_ctrl_type: u32) -> i32 {
 mod sleep;
 
 fn main() {
+    let settings = config::init();
+    // sleep::ms_output(20000);
+    // return;
+    
     let version_windows=OsVersion::current();
     println!("{}",version_windows.major);
     if version_windows.major>8
@@ -72,7 +76,6 @@ fn main() {
     // 对应 GUIOperation.Init()：设置 DPI 感知并加载 InputEvent.dll。
     gui_operation::init();
 
-    let settings = config::init();
     let character_name = settings.name.clone();
 
     let mut token_count: i64 = match fs::read_to_string("tokencount.txt") {
@@ -106,7 +109,7 @@ fn main() {
     let auto_focus_thread = thread::spawn(|| {
         while AUTO_FOCUS_SHOULD_RUN.load(Ordering::Relaxed) {
             gui_operation::focus();
-            sleep::sleep_ms(4000);
+            sleep::ms(4000);
         }
     });
 
@@ -125,13 +128,13 @@ fn main() {
             vision::full_screenshot();
             let (x, y) = vision::contains_blue();
             if x == 0 && y == 0 {
-                sleep::sleep_ms(1000);
+                sleep::ms(1000);
                 continue;
             }
             gui_operation::click(x as i32, y as i32);
-            sleep::sleep_ms(2000);
+            sleep::ms(2000);
         }
-        sleep::sleep_ms(1000);
+        sleep::ms(1000);
     }
 
     log::set_color(Color::Cyan);
@@ -189,11 +192,11 @@ fn main() {
         };
 
         if contain == (0, 0) {
-            sleep::sleep_ms(2000);
+            sleep::ms(2000);
             continue;
         }
 
-        sleep::sleep_ms(500);
+        sleep::ms(500);
         contain = if settings.at_detect {
             vision::contains_red_dot(vision::rect(at_place))
         } else {
@@ -208,19 +211,19 @@ fn main() {
         log::reset();
 
         gui_operation::click(contain.0 as i32, contain.1 as i32);
-        sleep::sleep_ms(1000);
+        sleep::ms(1000);
         gui_operation::drag_from_to_simple(
             start_dragging.0,
             start_dragging.1,
             end_dragging.0,
             end_dragging.1,
         );
-        sleep::sleep_ms(500);
+        sleep::ms(500);
         gui_operation::goto_center(conversation);
-        sleep::sleep_ms(500);
+        sleep::ms(500);
 
         vision::screenshot(copy_button_possible);
-        sleep::sleep_ms(1000);
+        sleep::ms(1000);
         clipboard::set_text("");
 
         let copy_points = vision::find_templates(vision::SCREENSHOT_FILE, "./copy.png", 30, 1)
@@ -228,25 +231,25 @@ fn main() {
         if copy_points.is_empty() {
             log::print("使用模板匹配查找复制按钮失败");
             for _ in 0..(settings.scroll * 2) {
-                sleep::sleep_ms(400);
+                sleep::ms(400);
                 gui_operation::scroll_down(480);
             }
-            sleep::sleep_ms(400);
+            sleep::ms(400);
 
             gui_operation::click_center(comment_section);
             for _ in 0..settings.tab_times {
                 gui_operation::tab();
-                sleep::sleep_ms(400);
+                sleep::ms(400);
             }
             gui_operation::press_key("enter");
-            sleep::sleep_ms(200);
+            sleep::ms(200);
         } else {
-            sleep::sleep_ms(800);
+            sleep::ms(800);
             gui_operation::click(
                 (copy_points[0].0 + copy_button_possible.0 as u32) as i32,
                 (copy_points[0].1 + copy_button_possible.1 as u32) as i32,
             );
-            sleep::sleep_ms(1500);
+            sleep::ms(1500);
         }
 
         let chat_content_text = clipboard::get_text();
@@ -296,7 +299,7 @@ fn main() {
                 log::warn("答案未生成,上传图片");
                 upload_image_without_send(upload_image_possible);
                 gui_operation::hot_key("ctrl", "enter");
-                sleep::sleep_ms(4000);
+                sleep::ms(4000);
                 log::print("退出会话");
             } else {
                 log::error("答案未生成,退出会话");
@@ -313,7 +316,7 @@ fn main() {
         }
 
         spinner::stop();
-        sleep::sleep_ms(100);
+        sleep::ms(100);
         gui_operation::click_center(comment_section);
         gui_operation::send_text(&result, comment_section);
 
@@ -331,10 +334,10 @@ fn main() {
             upload::escape();
         }
 
-        sleep::sleep_ms(4000);
+        sleep::ms(4000);
         log::print("发送消息 🎉");
         gui_operation::hot_key("ctrl", "enter");
-        sleep::sleep_ms(4000);
+        sleep::ms(4000);
         log::print("退出会话");
 
         gui_operation::clear_input_section();
@@ -409,7 +412,7 @@ fn go_back(
     _contact_button: PointI,
     copy_button_possible: RectI,
     upload_image_possible: RectI,
-    sleepms:u32
+    sleeps:u32
 ) {
     let mut count = 0;
     loop {
@@ -417,7 +420,7 @@ fn go_back(
             chat_button.0 + (100.0 * scale) as i32,
             chat_button.1 + (80.0 * scale) as i32,
         );
-        sleep::sleep_ms(3000);
+        sleep::ms(3000);
 
         if count > 2 {
             break;
@@ -425,7 +428,7 @@ fn go_back(
         count += 1;
 
         vision::screenshot(upload_image_possible);
-        sleep::sleep_ms(1500);
+        sleep::ms(1500);
         let upload_points =
             vision::find_templates(vision::SCREENSHOT_FILE, "./uploadImage.png", 30, 1)
                 .unwrap_or(vec![]);
@@ -435,7 +438,7 @@ fn go_back(
         }
 
         vision::screenshot(copy_button_possible);
-        sleep::sleep_ms(1500);
+        sleep::ms(1500);
         let copy_points = vision::find_templates(vision::SCREENSHOT_FILE, "./copy.png", 30, 1)
             .unwrap_or(vec![]);
         if !copy_points.is_empty() {
@@ -445,5 +448,5 @@ fn go_back(
 
         break;
     }
-    sleep_ms(sleepms as u64);
+    ms_output((sleeps*1000) as u64);
 }
