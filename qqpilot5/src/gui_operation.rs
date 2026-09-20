@@ -8,16 +8,19 @@ use std::time::Duration;
 
 use crate::clipboard;
 use crate::config;
+use crate::localization;
 use crate::log::{self, Color};
 use crate::native;
 use crate::positions::{PointI, RectI};
 use crate::sleep;
 
+
 /// 对应 `GUIOperation.Init()`：设置 DPI 感知并按需加载 DLL。
 pub fn init() -> bool {
-    let success = native::input_event().dpi_awareness_prologue();
+    let l=localization::load();
+    let success: bool = native::input_event().dpi_awareness_prologue();
     if !success {
-        println!("⚠️ 警告: DPI 感知设置失败（可能影响高分屏坐标精度）");
+        println!("{}", localization::get(&l,"warning.dpi"));
     }
     success
 }

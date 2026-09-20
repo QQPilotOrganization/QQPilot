@@ -31,7 +31,7 @@ use positions::{PointI, RectI};
 use upload_content::UploadContent;
 use windows_version::OsVersion;
 
-use crate::sleep::{ ms_output};
+use crate::sleep::ms_output;
 
 /// 自动聚焦线程是否继续运行。
 static AUTO_FOCUS_SHOULD_RUN: AtomicBool = AtomicBool::new(true);
@@ -44,17 +44,18 @@ unsafe extern "system" fn console_ctrl_handler(_ctrl_type: u32) -> i32 {
     1
 }
 
+mod localization;
 mod sleep;
-
 fn main() {
+    let translate = localization::load();
+
     let settings = config::init();
     // sleep::ms_output(20000);
     // return;
-    
-    let version_windows=OsVersion::current();
-    println!("{}",version_windows.major);
-    if version_windows.major>8
-    {
+
+    let version_windows = OsVersion::current();
+    println!("{}", version_windows.major);
+    if version_windows.major > 8 {
         log::enable_utf8_output();
     }
 
@@ -67,13 +68,15 @@ fn main() {
         }
     };
 
-    arrow_load::start_loading(Color::Green, "正在初始化");
+    arrow_load::start_loading(
+        Color::Green,
+        &localization::get(&translate, "default.loading"),
+    );
 
     if let Some(child) = scale_process.as_mut() {
         let _ = child.wait();
     }
 
-    // 对应 GUIOperation.Init()：设置 DPI 感知并加载 InputEvent.dll。
     gui_operation::init();
 
     let character_name = settings.name.clone();
@@ -82,8 +85,8 @@ fn main() {
         Ok(text) => match text.trim().trim_start_matches('\u{feff}').parse() {
             Ok(count) => count,
             Err(_) => {
-                if let Err(a) = fs::write("tokencount.txt", "0")  {
-                    log::error(format!("{a}"),);
+                if let Err(a) = fs::write("tokencount.txt", "0") {
+                    log::error(format!("{a}"));
                 }
                 0
             }
@@ -95,11 +98,15 @@ fn main() {
     };
 
     log::set_color(Color::Cyan);
-    log::print(format!("QQPilot {}", settings.version));
+    log::print(format!(
+        "{} {}",
+        localization::get(&translate, "program.name"),
+        settings.version
+    ));
     arrow_load::stop_loading();
     log::reset();
 
-    log::print("初始化完成");
+    log::print(&localization::get(&translate, "default.loading.success"));
 
     let os_description = format!("{} {}", std::env::consts::OS, std::env::consts::ARCH);
     log::set_color(Color::Yellow);
@@ -113,16 +120,28 @@ fn main() {
         }
     });
 
+    log::set_color(Color::Cyan);
+    log::print("======================================================");
+    log::print("");
+    log::set_color(Color::Yellow);
+    log::print(format!("\t{}",&localization::get(&translate, "warning.nevermovemouse")));
+    log::print("");
+    log::set_color(Color::Cyan);
+    log::print("======================================================");
+
     log::set_color(Color::Magenta);
-    log::print("请将消息栏拉到最小!");
+    log::print(&localization::get(&translate, "warning.minimum.bar"));
 
     log::set_color(Color::Cyan);
-    log::print(format!("欢迎您 {character_name}。"));
-    log::print("自动聚焦功能已开启");
+    log::print(format!(
+        "{} {character_name}。",
+        &localization::get(&translate, "info.welcome")
+    ));
+    log::print(&localization::get(&translate, "info.autofocus"));
 
     if settings.auto_login {
-        log::print("自动登录功能已开启");
-        log::print("正在尝试登录...");
+        log::print(&localization::get(&translate, "info.autologin"));
+        log::print(&localization::get(&translate, "info.login.try"));
 
         for _ in 0..4 {
             vision::full_screenshot();
@@ -136,15 +155,6 @@ fn main() {
         }
         sleep::ms(1000);
     }
-
-    log::set_color(Color::Cyan);
-    log::print("======================================================");
-    log::print("");
-    log::set_color(Color::Yellow);
-    log::print("\t使用时请勿移动鼠标！");
-    log::print("");
-    log::set_color(Color::Cyan);
-    log::print("======================================================");
 
     // 实际窗口尺寸
     let size: (i32, i32) = (
@@ -181,7 +191,7 @@ fn main() {
     let mut answer_model: Option<Answer> = None;
 
     while !CANCELLED.load(Ordering::Relaxed) {
-        print!("正在寻找新信息...\r");
+        print!("{}\r",&localization::get(&translate, "info.searchingnewmessage"));
         let _ = std::io::stdout().flush();
 
         vision::full_screenshot();
@@ -207,7 +217,7 @@ fn main() {
         }
 
         log::set_color(Color::Green);
-        log::print(format!("发现红点: {contain:?}"));
+        log::print(format!("{}: {contain:?}",&localization::get(&translate, "info.found.reddot")));
         log::reset();
 
         gui_operation::click(contain.0 as i32, contain.1 as i32);
@@ -227,9 +237,9 @@ fn main() {
         clipboard::set_text("");
 
         let copy_points = vision::find_templates(vision::SCREENSHOT_FILE, "./copy.png", 30, 1)
-            .expect("模板匹配失败");
+            .expect(&localization::get(&translate, "error.matchtemplate.failed"));
         if copy_points.is_empty() {
-            log::print("使用模板匹配查找复制按钮失败");
+            log::print(&localization::get(&translate, "error.matchtemplate.failed"));
             for _ in 0..(settings.scroll * 2) {
                 sleep::ms(400);
                 gui_operation::scroll_down(480);
@@ -254,7 +264,7 @@ fn main() {
 
         let chat_content_text = clipboard::get_text();
         if chat_content_text.is_empty() {
-            log::error("没有提取到消息。");
+            log::error(&localization::get(&translate, "warning.message.notextracted"));
             spinner::stop();
             go_back(
                 settings.scale,
@@ -262,14 +272,14 @@ fn main() {
                 contact_button,
                 copy_button_possible,
                 upload_image_possible,
-                settings.sleep
+                settings.sleep,
             );
-            
+
             continue;
         }
 
         let chat_contents = conversation::parse_chat_log(&chat_content_text, &character_name);
-        spinner::start(Color::Green, "等待语言模型生成答案");
+        spinner::start(Color::Green, &localization::get(&translate, "info.waitinganswer"));
 
         gui_operation::click_center(comment_section);
 
@@ -285,7 +295,7 @@ fn main() {
 
         if model.total_tokens != 0 {
             token_count += model.total_tokens;
-            log::print(format!("累计用量: {token_count}"));
+            log::print(format!("{}: {token_count}",localization::get(&translate, "info.tokencount")));
             if let Err(e) = fs::write("tokencount.txt", token_count.to_string()) {
                 log::error(e.to_string());
             }
@@ -296,13 +306,13 @@ fn main() {
         let result = result.trim().to_string();
         if result.replace("\n\n", "").is_empty() || result.is_empty() {
             if settings.with_image && settings.send_image_possibility > 0 {
-                log::warn("答案未生成,上传图片");
+                log::warn(format!("{},{}",localization::get(&translate, "warning.notgenerated"),localization::get(&translate, "info.uploadimage")));
                 upload_image_without_send(upload_image_possible);
                 gui_operation::hot_key("ctrl", "enter");
                 sleep::ms(4000);
-                log::print("退出会话");
+                log::print(&localization::get(&translate, "info.quitconversation"));
             } else {
-                log::error("答案未生成,退出会话");
+                log::error(format!("{}，{}",localization::get(&translate, "warning.notgenerated"),localization::get(&translate, "info.quitconversation")));
             }
             go_back(
                 settings.scale,
@@ -310,7 +320,7 @@ fn main() {
                 contact_button,
                 copy_button_possible,
                 upload_image_possible,
-                settings.sleep
+                settings.sleep,
             );
             continue;
         }
@@ -321,24 +331,24 @@ fn main() {
         gui_operation::send_text(&result, comment_section);
 
         for image in &images_to_upload {
-            log::print("上传获取的图片");
+            log::print(&localization::get(&translate, "info.uploadgotimage"));
             upload::upload_selected_image(upload_image_possible, image);
             upload::escape();
         }
 
         let possibility = rand::random_range(0..100);
-        log::print(format!("概率:{possibility}"));
+        // log::print(format!("概率:{possibility}"));
         if settings.with_image && possibility < settings.send_image_possibility {
-            log::print("上传图片");
+            log::print(localization::get(&translate, "info.uploadimage"));
             upload_image_without_send(upload_image_possible);
             upload::escape();
         }
 
         sleep::ms(4000);
-        log::print("发送消息 🎉");
+        log::print(localization::get(&translate, "info.sentmessage"));
         gui_operation::hot_key("ctrl", "enter");
         sleep::ms(4000);
-        log::print("退出会话");
+        log::print(&localization::get(&translate, "info.quitconversation"));
 
         gui_operation::clear_input_section();
         go_back(
@@ -347,12 +357,13 @@ fn main() {
             contact_button,
             copy_button_possible,
             upload_image_possible,
-            settings.sleep
+            settings.sleep,
         );
     }
 
     log::set_color(Color::Red);
-    log::print("\n结束运行");
+    log::print("\n");
+    log::print(&localization::get(&translate, "info.quit"));
     log::reset();
 
     AUTO_FOCUS_SHOULD_RUN.store(false, Ordering::Relaxed);
@@ -363,6 +374,7 @@ fn main() {
 
 /// 对应 `Program.UploadImageWithoutSend`：从 exe 目录下的 `Images` 里挑一张图上传。
 fn upload_image_without_send(upload_image_possible: RectI) {
+    let translate=localization::load();
     let image_dir = std::env::current_exe()
         .ok()
         .and_then(|path| path.parent().map(|dir| dir.join("Images")))
@@ -379,7 +391,7 @@ fn upload_image_without_send(upload_image_possible: RectI) {
             })
             .unwrap_or_default()
     } else {
-        log::error("没有找到图片目录");
+        log::error(&localization::get(&translate, "error.imagefoldernotfound"));
         Vec::new()
     };
 
@@ -412,7 +424,7 @@ fn go_back(
     _contact_button: PointI,
     copy_button_possible: RectI,
     upload_image_possible: RectI,
-    sleeps:u32
+    sleeps: u32,
 ) {
     let mut count = 0;
     loop {
@@ -439,8 +451,8 @@ fn go_back(
 
         vision::screenshot(copy_button_possible);
         sleep::ms(1500);
-        let copy_points = vision::find_templates(vision::SCREENSHOT_FILE, "./copy.png", 30, 1)
-            .unwrap_or(vec![]);
+        let copy_points =
+            vision::find_templates(vision::SCREENSHOT_FILE, "./copy.png", 30, 1).unwrap_or(vec![]);
         if !copy_points.is_empty() {
             log::print(format!("({},{})", copy_points[0].0, copy_points[0].1));
             continue;
@@ -448,5 +460,5 @@ fn go_back(
 
         break;
     }
-    ms_output((sleeps*1000) as u64);
+    ms_output((sleeps * 1000) as u64);
 }
