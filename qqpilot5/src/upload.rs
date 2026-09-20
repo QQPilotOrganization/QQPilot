@@ -5,6 +5,7 @@ use std::thread;
 use std::time::Duration;
 
 use crate::gui_operation;
+use crate::localization;
 use crate::log;
 use crate::native;
 use crate::positions::RectI;
@@ -22,14 +23,16 @@ pub fn escape() {
 
 /// 对应 `Upload2.UploadImage`：先找上传按钮，找不到就退回 `uploadImage2.exe`。
 pub fn upload_image(upload_image_possible_actual_size: RectI) {
+    let translate = localization::load();
     vision::screenshot(upload_image_possible_actual_size);
     thread::sleep(Duration::from_millis(2000));
 
-    let found = vision::find_templates(vision::SCREENSHOT_FILE, "uploadImage.png", 30, 1)
-        .expect("模板匹配失败");
+    let failure = localization::get(&translate, "error.matchtemplate.failed");
+    let found =
+        vision::find_templates(vision::SCREENSHOT_FILE, "uploadImage.png", 30, 1).expect(&failure);
 
     if found.is_empty() {
-        log::print("使用模板匹配查找上传图片按钮失败");
+        log::print(failure);
         let _ = Command::new("uploadImage2.exe").status();
         thread::sleep(Duration::from_millis(200));
         gui_operation::hot_key("ctrl", "v");
@@ -47,14 +50,16 @@ pub fn upload_image(upload_image_possible_actual_size: RectI) {
 
 /// 对应 `Upload2.UploadSelectedImage`：上传指定文件。
 pub fn upload_selected_image(upload_image_possible_actual_size: RectI, file: &str) {
+    let translate = localization::load();
     vision::screenshot(upload_image_possible_actual_size);
     thread::sleep(Duration::from_millis(2000));
 
-    let found = vision::find_templates(vision::SCREENSHOT_FILE, "uploadImage.png", 30, 1)
-        .expect("模板匹配失败");
+    let failure = localization::get(&translate, "error.matchtemplate.failed");
+    let found =
+        vision::find_templates(vision::SCREENSHOT_FILE, "uploadImage.png", 30, 1).expect(&failure);
 
     if found.is_empty() {
-        log::print("使用模板匹配查找上传图片按钮失败");
+        log::print(failure);
         let _ = Command::new("uploadImage2.exe").status();
         thread::sleep(Duration::from_millis(200));
         gui_operation::hot_key("ctrl", "v");

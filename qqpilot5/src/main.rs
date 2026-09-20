@@ -1,5 +1,8 @@
 //! QQPilot5
 
+// localization.rs 的测试用 json! 展开整张翻译表，默认递归上限不够。
+#![recursion_limit = "256"]
+
 mod answer;
 mod arrow_load;
 mod chat_content;
@@ -106,7 +109,7 @@ fn main() {
     arrow_load::stop_loading();
     log::reset();
 
-    log::print(&localization::get(&translate, "default.loading.success"));
+    log::print(localization::get(&translate, "default.loading.success"));
 
     let os_description = format!("{} {}", std::env::consts::OS, std::env::consts::ARCH);
     log::set_color(Color::Yellow);
@@ -124,24 +127,27 @@ fn main() {
     log::print("======================================================");
     log::print("");
     log::set_color(Color::Yellow);
-    log::print(format!("\t{}",&localization::get(&translate, "warning.nevermovemouse")));
+    log::print(format!(
+        "\t{}",
+        &localization::get(&translate, "warning.nevermovemouse")
+    ));
     log::print("");
     log::set_color(Color::Cyan);
     log::print("======================================================");
 
     log::set_color(Color::Magenta);
-    log::print(&localization::get(&translate, "warning.minimum.bar"));
+    log::print(localization::get(&translate, "warning.minimum.bar"));
 
     log::set_color(Color::Cyan);
     log::print(format!(
         "{} {character_name}。",
         &localization::get(&translate, "info.welcome")
     ));
-    log::print(&localization::get(&translate, "info.autofocus"));
+    log::print(localization::get(&translate, "info.autofocus"));
 
     if settings.auto_login {
-        log::print(&localization::get(&translate, "info.autologin"));
-        log::print(&localization::get(&translate, "info.login.try"));
+        log::print(localization::get(&translate, "info.autologin"));
+        log::print(localization::get(&translate, "info.login.try"));
 
         for _ in 0..4 {
             vision::full_screenshot();
@@ -191,7 +197,10 @@ fn main() {
     let mut answer_model: Option<Answer> = None;
 
     while !CANCELLED.load(Ordering::Relaxed) {
-        print!("{}\r",&localization::get(&translate, "info.searchingnewmessage"));
+        print!(
+            "{}\r",
+            &localization::get(&translate, "info.searchingnewmessage")
+        );
         let _ = std::io::stdout().flush();
 
         vision::full_screenshot();
@@ -217,7 +226,10 @@ fn main() {
         }
 
         log::set_color(Color::Green);
-        log::print(format!("{}: {contain:?}",&localization::get(&translate, "info.found.reddot")));
+        log::print(format!(
+            "{}: {contain:?}",
+            &localization::get(&translate, "info.found.reddot")
+        ));
         log::reset();
 
         gui_operation::click(contain.0 as i32, contain.1 as i32);
@@ -237,9 +249,14 @@ fn main() {
         clipboard::set_text("");
 
         let copy_points = vision::find_templates(vision::SCREENSHOT_FILE, "./copy.png", 30, 1)
-            .expect(&localization::get(&translate, "error.matchtemplate.failed"));
+            .unwrap_or_else(|_| {
+                panic!(
+                    "{}",
+                    localization::get(&translate, "error.matchtemplate.failed")
+                )
+            });
         if copy_points.is_empty() {
-            log::print(&localization::get(&translate, "error.matchtemplate.failed"));
+            log::print(localization::get(&translate, "error.matchtemplate.failed"));
             for _ in 0..(settings.scroll * 2) {
                 sleep::ms(400);
                 gui_operation::scroll_down(480);
@@ -264,7 +281,10 @@ fn main() {
 
         let chat_content_text = clipboard::get_text();
         if chat_content_text.is_empty() {
-            log::error(&localization::get(&translate, "warning.message.notextracted"));
+            log::error(localization::get(
+                &translate,
+                "warning.message.notextracted",
+            ));
             spinner::stop();
             go_back(
                 settings.scale,
@@ -279,7 +299,10 @@ fn main() {
         }
 
         let chat_contents = conversation::parse_chat_log(&chat_content_text, &character_name);
-        spinner::start(Color::Green, &localization::get(&translate, "info.waitinganswer"));
+        spinner::start(
+            Color::Green,
+            &localization::get(&translate, "info.waitinganswer"),
+        );
 
         gui_operation::click_center(comment_section);
 
@@ -295,7 +318,10 @@ fn main() {
 
         if model.total_tokens != 0 {
             token_count += model.total_tokens;
-            log::print(format!("{}: {token_count}",localization::get(&translate, "info.tokencount")));
+            log::print(format!(
+                "{}: {token_count}",
+                localization::get(&translate, "info.tokencount")
+            ));
             if let Err(e) = fs::write("tokencount.txt", token_count.to_string()) {
                 log::error(e.to_string());
             }
@@ -306,13 +332,21 @@ fn main() {
         let result = result.trim().to_string();
         if result.replace("\n\n", "").is_empty() || result.is_empty() {
             if settings.with_image && settings.send_image_possibility > 0 {
-                log::warn(format!("{},{}",localization::get(&translate, "warning.notgenerated"),localization::get(&translate, "info.uploadimage")));
+                log::warn(format!(
+                    "{},{}",
+                    localization::get(&translate, "warning.notgenerated"),
+                    localization::get(&translate, "info.uploadimage")
+                ));
                 upload_image_without_send(upload_image_possible);
                 gui_operation::hot_key("ctrl", "enter");
                 sleep::ms(4000);
-                log::print(&localization::get(&translate, "info.quitconversation"));
+                log::print(localization::get(&translate, "info.quitconversation"));
             } else {
-                log::error(format!("{}，{}",localization::get(&translate, "warning.notgenerated"),localization::get(&translate, "info.quitconversation")));
+                log::error(format!(
+                    "{}，{}",
+                    localization::get(&translate, "warning.notgenerated"),
+                    localization::get(&translate, "info.quitconversation")
+                ));
             }
             go_back(
                 settings.scale,
@@ -331,7 +365,7 @@ fn main() {
         gui_operation::send_text(&result, comment_section);
 
         for image in &images_to_upload {
-            log::print(&localization::get(&translate, "info.uploadgotimage"));
+            log::print(localization::get(&translate, "info.uploadgotimage"));
             upload::upload_selected_image(upload_image_possible, image);
             upload::escape();
         }
@@ -348,7 +382,7 @@ fn main() {
         log::print(localization::get(&translate, "info.sentmessage"));
         gui_operation::hot_key("ctrl", "enter");
         sleep::ms(4000);
-        log::print(&localization::get(&translate, "info.quitconversation"));
+        log::print(localization::get(&translate, "info.quitconversation"));
 
         gui_operation::clear_input_section();
         go_back(
@@ -363,18 +397,16 @@ fn main() {
 
     log::set_color(Color::Red);
     log::print("\n");
-    log::print(&localization::get(&translate, "info.quit"));
+    log::print(localization::get(&translate, "info.quit"));
     log::reset();
 
     AUTO_FOCUS_SHOULD_RUN.store(false, Ordering::Relaxed);
     let _ = auto_focus_thread.join();
 }
 
-/// 对应 `Program.ClearInputSection`。
-
 /// 对应 `Program.UploadImageWithoutSend`：从 exe 目录下的 `Images` 里挑一张图上传。
 fn upload_image_without_send(upload_image_possible: RectI) {
-    let translate=localization::load();
+    let translate = localization::load();
     let image_dir = std::env::current_exe()
         .ok()
         .and_then(|path| path.parent().map(|dir| dir.join("Images")))
@@ -391,7 +423,7 @@ fn upload_image_without_send(upload_image_possible: RectI) {
             })
             .unwrap_or_default()
     } else {
-        log::error(&localization::get(&translate, "error.imagefoldernotfound"));
+        log::error(localization::get(&translate, "error.imagefoldernotfound"));
         Vec::new()
     };
 

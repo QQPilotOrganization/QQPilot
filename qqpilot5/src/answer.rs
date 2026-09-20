@@ -16,6 +16,7 @@ use serde_json::{Map, Value, json};
 
 use crate::chat_content::ChatContent;
 use crate::config;
+use crate::localization;
 use crate::log::{self, Color};
 use crate::tiny_lang_jaccard::TinyLangJaccard;
 use crate::upload_content::UploadContent;
@@ -57,10 +58,11 @@ impl Answer {
             builtin = true;
         }
 
+        let client_failure = localization::get(&localization::load(), "error.http.client");
         let client = Client::builder()
             .timeout(Duration::from_secs(settings.remote_server_timeout))
             .build()
-            .expect("创建 HTTP 客户端失败");
+            .expect(&client_failure);
 
         let _ = fs::create_dir_all(TEMP_PATH);
 
@@ -171,7 +173,10 @@ impl Answer {
                 .and_then(Value::as_str)
         };
         let Some(answer) = answer else {
-            log::error("响应中缺少答案字段");
+            log::error(localization::get(
+                &localization::load(),
+                "error.answer.missing",
+            ));
             return None;
         };
 
@@ -182,7 +187,11 @@ impl Answer {
         };
 
         let elapsed = start_time.elapsed().as_secs_f64();
-        log::print(format!("用时 {elapsed:.2}s"));
+        let translate = localization::load();
+        log::print(format!(
+            "{} {elapsed:.2}s",
+            localization::get(&translate, "info.elapsed")
+        ));
         log::print(answer.trim());
 
         Some(UploadContent::new(
@@ -205,10 +214,12 @@ impl Answer {
                     }),
                 );
             }
+            let uninitialized =
+                localization::get(&localization::load(), "error.builtin.uninitialized");
             let answer = self
                 .tiny_lang_jaccard
                 .as_ref()
-                .expect("内置模型已初始化")
+                .expect(&uninitialized)
                 .answer(&item.text)
                 .unwrap_or_else(|e| {
                     log::error(e);
@@ -237,7 +248,10 @@ impl Answer {
                         break;
                     }
                 } else {
-                    log::warn(format!("× 没有找到图片 {image}"));
+                    log::warn(format!(
+                        "× {} {image}",
+                        localization::get(&localization::load(), "warning.image.notfound")
+                    ));
                 }
             }
             if image_list.len() >= self.max_image_count {
@@ -260,7 +274,10 @@ impl Answer {
                     continue;
                 }
                 let Ok(bytes) = fs::read(image) else {
-                    log::warn(format!("× 读取图片失败 {image}"));
+                    log::warn(format!(
+                        "× {} {image}",
+                        localization::get(&localization::load(), "warning.image.readfailed")
+                    ));
                     continue;
                 };
                 let encoded = base64::engine::general_purpose::STANDARD.encode(&bytes);
@@ -346,8 +363,14 @@ impl Answer {
                 read("completion_tokens"),
                 read("total_tokens"),
             );
+            let translate = localization::load();
+            let t = |key: &str| localization::get(&translate, key);
             log::print(format!(
-                "Token 用量: 输入 {prompt} | 输出 {completion} | 总计 {total}"
+                "{}: {} {prompt} | {} {completion} | {} {total}",
+                t("info.token.usage"),
+                t("info.token.input"),
+                t("info.token.output"),
+                t("info.token.total"),
             ));
             self.total_tokens += total;
         }
@@ -399,19 +422,27 @@ fn collect_response_images(document: &Value) -> Vec<String> {
         return Vec::new();
     };
 
-    println!("找到 {} 张图片", images.len());
+    let translate = localization::load();
+    let t = |key: &str| localization::get(&translate, key);
+
+    println!(
+        "{} {} {}",
+        t("info.image.found"),
+        images.len(),
+        t("info.image.unit")
+    );
 
     let mut paths = Vec::new();
     for image in images {
         if let Some(url) = image.pointer("/image_url/url").and_then(Value::as_str) {
             let preview: String = url.chars().take(50).collect();
-            println!("图片 DataURL: {preview}...");
+            println!("{}: {preview}...", t("info.image.dataurl"));
             if let Some(path) = save_to_temp(url) {
                 paths.push(path);
             }
         }
         if let Some(encoded) = image.get("b64_json").and_then(Value::as_str) {
-            println!("Base64 长度: {}", encoded.len());
+            println!("{}: {}", t("info.image.baselength"), encoded.len());
             if let Some(path) = save_to_temp(encoded) {
                 paths.push(path);
             }
@@ -422,14 +453,17 @@ fn collect_response_images(document: &Value) -> Vec<String> {
 
 /// 对应 `Answer.SaveToTemp`：把 data URL / base64 存成 `./temp/<md5>.<ext>`。
 fn save_to_temp(base64_string: &str) -> Option<String> {
+    let translate = localization::load();
+    let t = |key: &str| localization::get(&translate, key);
+
     let meta = base64_string.split(';').next().unwrap_or_default();
     let Some((_, payload)) = base64_string.split_once(',') else {
         let preview: String = base64_string.chars().take(60).collect();
-        log::error(format!("图片数据格式不正确: {preview}"));
+        log::error(format!("{}: {preview}", t("error.image.badformat")));
         return None;
     };
     let Some(extension) = meta.split("data:image/").nth(1) else {
-        log::error(format!("无法识别图片 MIME 前缀: {meta}"));
+        log::error(format!("{}: {meta}", t("error.image.unknownmime")));
         return None;
     };
 
@@ -443,6 +477,9 @@ fn save_to_temp(base64_string: &str) -> Option<String> {
 
 /// 对应 `Answer.SaveBase64Image`。
 fn save_base64_image(base64_string: &str, file_path: &str) -> Option<()> {
+    let translate = localization::load();
+    let t = |key: &str| localization::get(&translate, key);
+
     log::print(format!("saved{file_path}"));
     let payload = match base64_string.split_once(',') {
         Some((_, rest)) => rest,
@@ -452,16 +489,16 @@ fn save_base64_image(base64_string: &str, file_path: &str) -> Option<()> {
     match base64::engine::general_purpose::STANDARD.decode(payload) {
         Ok(bytes) => match fs::write(file_path, bytes) {
             Ok(()) => {
-                println!("图片已保存到: {file_path}");
+                println!("{}: {file_path}", t("info.image.saved"));
                 Some(())
             }
             Err(e) => {
-                log::error(format!("写入 {file_path} 失败: {e}"));
+                log::error(format!("{} {file_path}: {e}", t("error.file.writefailed")));
                 None
             }
         },
         Err(e) => {
-            log::error(format!("base64 解码失败: {e}"));
+            log::error(format!("{}: {e}", t("error.base64.decode")));
             None
         }
     }

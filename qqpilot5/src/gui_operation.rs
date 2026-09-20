@@ -14,13 +14,12 @@ use crate::native;
 use crate::positions::{PointI, RectI};
 use crate::sleep;
 
-
 /// 对应 `GUIOperation.Init()`：设置 DPI 感知并按需加载 DLL。
 pub fn init() -> bool {
-    let l=localization::load();
+    let l = localization::load();
     let success: bool = native::input_event().dpi_awareness_prologue();
     if !success {
-        println!("{}", localization::get(&l,"warning.dpi"));
+        println!("{}", localization::get(&l, "warning.dpi"));
     }
     success
 }
@@ -85,18 +84,32 @@ pub fn drag_from_to_simple(x1: i32, y1: i32, x2: i32, y2: i32) {
 
 /// 对应 `GUIOperation.PressKey`：键名找不到时与 C# 一样直接中断。
 pub fn press_key(key_name: &str) {
+    let translate = localization::load();
     let vk = native::input_event().get_vk_key(&key_name.to_uppercase());
-    assert!(vk != 0, "未知键名: {key_name}");
+    assert!(
+        vk != 0,
+        "{}: {key_name}",
+        localization::get(&translate, "error.key.unknown")
+    );
     native::input_event().press(vk);
 }
 
 /// 对应 `GUIOperation.HotKey`。
 pub fn hot_key(modifier: &str, key: &str) {
+    let translate = localization::load();
     let input = native::input_event();
     let mod_vk = input.get_vk_key(&modifier.to_uppercase());
     let key_vk = input.get_vk_key(&key.to_uppercase());
-    assert!(mod_vk != 0, "未知修饰键: {modifier}");
-    assert!(key_vk != 0, "未知按键: {key}");
+    assert!(
+        mod_vk != 0,
+        "{}: {modifier}",
+        localization::get(&translate, "error.key.modifier")
+    );
+    assert!(
+        key_vk != 0,
+        "{}: {key}",
+        localization::get(&translate, "error.key.press")
+    );
     input.hot_key(mod_vk, key_vk);
 }
 
@@ -114,8 +127,12 @@ pub fn focus() {
 
 /// 对应 `GUIOperation.SendText`：按 `[[NEXT]]` 分段，段内按 `\n` 分行发送。
 pub fn send_text(text: &str, comment_section: RectI) {
+    let translate = localization::load();
     log::set_color(Color::Green);
-    log::print(format!("发消息->{text}"));
+    log::print(format!(
+        "{}{text}",
+        localization::get(&translate, "info.sendmessage")
+    ));
 
     for item in text.split("[[NEXT]]") {
         log::print(format!("{item};"));

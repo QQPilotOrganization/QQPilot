@@ -14,6 +14,7 @@
 //!   * `Tooltip`      -> 普通 `Label`（NWG 没有可点击的常显提示控件）
 
 mod config;
+mod localization;
 
 use std::process::Command;
 
@@ -48,7 +49,7 @@ const TIMEOUT_MIN: i32 = 60;
 #[derive(Default, NwgUi)]
 pub struct SettingsApp {
     #[nwg_control(size: (CLIENT_WIDTH as i32, CLIENT_HEIGHT as i32), position: (0, 0),
-                  title: "设置", flags: "WINDOW|VISIBLE", icon: Some(&data.icon))]
+                  title: localization::text("option.title"), flags: "WINDOW|VISIBLE", icon: Some(&data.icon))]
     #[nwg_events(OnInit: [SettingsApp::on_init], OnWindowClose: [SettingsApp::on_close])]
     window: nwg::Window,
 
@@ -56,126 +57,126 @@ pub struct SettingsApp {
     icon: nwg::Icon,
 
     // ---- 版本 / 用户名 ----
-    #[nwg_control(text: "版本", size: (46, 22), position: (11, 7))]
+    #[nwg_control(text: localization::text("option.version"), size: (46, 22), position: (11, 7))]
     label_version: nwg::Label,
 
     #[nwg_control(text: "", size: (449, 22), position: (86, 7))]
     vname: nwg::Label,
 
-    #[nwg_control(text: "用户名", size: (70, 22), position: (9, 33))]
+    #[nwg_control(text: localization::text("option.user.name"), size: (70, 22), position: (9, 33))]
     label_user_name: nwg::Label,
 
     #[nwg_control(size: (218, 36), position: (83, 26))]
     #[nwg_events(OnTextInput: [SettingsApp::guard_empty_text])]
     user_name: nwg::TextInput,
 
-    #[nwg_control(text: "用于判断是否是自身消息", size: (168, 38), position: (304, 24))]
+    #[nwg_control(text: localization::text("option.user.name.hint"), size: (168, 38), position: (304, 24))]
     label_user_name_hint: nwg::Label,
 
     // ---- 窗口尺寸 / token 计数 ----
-    #[nwg_control(text: "窗口宽度", size: (70, 22), position: (11, 66))]
+    #[nwg_control(text: localization::text("option.window.width"), size: (70, 22), position: (11, 66))]
     label_window_width: nwg::Label,
 
     #[nwg_control(size: (84, 34), position: (86, 59), flags: "VISIBLE|TAB_STOP|NUMBER")]
     win_width: nwg::TextInput,
 
-    #[nwg_control(text: "窗口高度", size: (70, 22), position: (174, 66))]
+    #[nwg_control(text: localization::text("option.window.height"), size: (70, 22), position: (174, 66))]
     label_window_height: nwg::Label,
 
     #[nwg_control(size: (84, 34), position: (248, 59), flags: "VISIBLE|TAB_STOP|NUMBER")]
     win_height: nwg::TextInput,
 
-    #[nwg_control(text: "Token用量", size: (70, 22), position: (355, 66), h_align: nwg::HTextAlign::Center)]
+    #[nwg_control(text: localization::text("option.token.count"), size: (70, 22), position: (355, 66), h_align: nwg::HTextAlign::Center)]
     label_token_count: nwg::Label,
 
     #[nwg_control(text: "0", size: (59, 22), position: (432, 66))]
     token_count: nwg::Label,
 
-    #[nwg_control(text: "重置计数器", size: (111, 32), position: (416, 93))]
+    #[nwg_control(text: localization::text("option.reset.token"), size: (111, 32), position: (416, 93))]
     #[nwg_events(OnButtonClick: [SettingsApp::reset_token_count])]
     button_reset_token: nwg::Button,
 
     // ---- 图片解析 ----
-    #[nwg_control(text: "解析图片数", size: (70, 22), position: (11, 103))]
+    #[nwg_control(text: localization::text("option.max.image.count"), size: (70, 22), position: (11, 103))]
     label_max_image_count: nwg::Label,
 
     #[nwg_control(size: (84, 34), position: (86, 97), flags: "VISIBLE|TAB_STOP|NUMBER")]
     #[nwg_events(OnTextInput: [SettingsApp::on_max_image_count_changed])]
     max_image_count: nwg::TextInput,
 
-    #[nwg_control(text: "(本地模型解析>1张图片时速度极慢)", size: (227, 38), position: (174, 93))]
+    #[nwg_control(text: localization::text("option.max.image.hint"), size: (227, 38), position: (174, 93))]
     label_max_image_hint: nwg::Label,
 
     // ---- 模型 / 接口 ----
-    #[nwg_control(text: "模型名称", size: (70, 22), position: (11, 139))]
+    #[nwg_control(text: localization::text("option.model.name"), size: (70, 22), position: (11, 139))]
     label_model_name: nwg::Label,
 
     #[nwg_control(size: (458, 36), position: (86, 131))]
     #[nwg_events(OnTextInput: [SettingsApp::guard_empty_text])]
     model_name: nwg::TextInput,
 
-    #[nwg_control(text: "视觉模型", size: (70, 22), position: (11, 176))]
+    #[nwg_control(text: localization::text("option.vision.model"), size: (70, 22), position: (11, 176))]
     label_vision_model: nwg::Label,
 
     #[nwg_control(text: "", size: (78, 33), position: (86, 170), flags: "VISIBLE|TAB_STOP")]
     is_vision_model: nwg::CheckBox,
 
-    #[nwg_control(text: "API Key", size: (70, 22), position: (11, 215))]
+    #[nwg_control(text: localization::text("option.api.key"), size: (70, 22), position: (11, 215))]
     label_api_key: nwg::Label,
 
     #[nwg_control(size: (459, 36), position: (84, 207), password: Some('·'))]
     #[nwg_events(OnTextInput: [SettingsApp::guard_empty_text])]
     api_key: nwg::TextInput,
 
-    #[nwg_control(text: "服务器", size: (70, 22), position: (11, 262))]
+    #[nwg_control(text: localization::text("option.server"), size: (70, 22), position: (11, 262))]
     label_server: nwg::Label,
 
     #[nwg_control(size: (111, 36), position: (86, 254), flags: "VISIBLE|TAB_STOP",
-                  collection: vec!["ollama".to_string(), "内置模型".to_string(), "自定义".to_string()])]
+                  collection: vec!["ollama".to_string(), localization::text("option.server.builtin").to_string(), localization::text("option.server.custom").to_string()])]
     #[nwg_events(OnComboxBoxSelection: [SettingsApp::on_server_changed])]
     server_name: nwg::ComboBox<String>,
 
     #[nwg_control(size: (343, 36), position: (200, 254))]
     server_url: nwg::TextInput,
 
-    #[nwg_control(text: "请求的额外参数", size: (111, 32), position: (200, 297))]
+    #[nwg_control(text: localization::text("option.extra.json"), size: (111, 32), position: (200, 297))]
     #[nwg_events(OnButtonClick: [SettingsApp::open_extra_json])]
     button_extra_json: nwg::Button,
 
-    #[nwg_control(text: "强制使用OllamaAPI", size: (136, 22), position: (336, 302))]
+    #[nwg_control(text: localization::text("option.force.ollama"), size: (136, 22), position: (336, 302))]
     label_force_ollama: nwg::Label,
 
     #[nwg_control(text: "", size: (78, 33), position: (465, 297), flags: "VISIBLE|TAB_STOP")]
     force_ollama_api: nwg::CheckBox,
 
     // ---- 交互节奏 ----
-    #[nwg_control(text: "框选消息时长", size: (90, 22), position: (11, 302))]
+    #[nwg_control(text: localization::text("option.scroll"), size: (90, 22), position: (11, 302))]
     label_scroll: nwg::Label,
 
     #[nwg_control(size: (84, 34), position: (105, 294), flags: "VISIBLE|TAB_STOP|NUMBER")]
     #[nwg_events(OnTextInput: [SettingsApp::on_scroll_changed])]
     scroll: nwg::TextInput,
 
-    #[nwg_control(text: "包含图片", size: (70, 22), position: (11, 341))]
+    #[nwg_control(text: localization::text("option.with.image"), size: (70, 22), position: (11, 341))]
     label_with_image: nwg::Label,
 
     #[nwg_control(text: "", size: (78, 33), position: (86, 336), flags: "VISIBLE|TAB_STOP")]
     with_image: nwg::CheckBox,
 
-    #[nwg_control(text: "自动点击登录", size: (90, 22), position: (174, 341))]
+    #[nwg_control(text: localization::text("option.auto.login"), size: (90, 22), position: (174, 341))]
     label_auto_login: nwg::Label,
 
     #[nwg_control(text: "", size: (78, 33), position: (254, 336), flags: "VISIBLE|TAB_STOP")]
     auto_login: nwg::CheckBox,
 
-    #[nwg_control(text: "持续将窗口置于最前", size: (136, 22), position: (336, 341))]
+    #[nwg_control(text: localization::text("option.auto.focusing"), size: (136, 22), position: (336, 341))]
     label_auto_focusing: nwg::Label,
 
     #[nwg_control(text: "", size: (78, 33), position: (465, 336), flags: "VISIBLE|TAB_STOP")]
     auto_focusing: nwg::CheckBox,
 
     // ---- 发送图片概率 ----
-    #[nwg_control(text: "发送图片概率 (%)", size: (118, 22), position: (9, 378))]
+    #[nwg_control(text: localization::text("option.send.image.possibility"), size: (118, 22), position: (9, 378))]
     label_possibility: nwg::Label,
 
     #[nwg_control(size: (424, 33), position: (120, 373), range: Some(0..100), pos: Some(0),
@@ -183,33 +184,26 @@ pub struct SettingsApp {
     #[nwg_events(OnHorizontalScroll: [SettingsApp::on_possibility_changed])]
     send_image_possibility: nwg::TrackBar,
 
-    #[nwg_control(text: "只检查 @", size: (70, 22), position: (11, 413))]
+    #[nwg_control(text: localization::text("option.at.detect"), size: (70, 22), position: (11, 413))]
     label_at_detect: nwg::Label,
 
-
-    #[nwg_control(text: "发送完消息后等待 (秒):", size: (180, 22), position: (200, 413)) ]
+    #[nwg_control(text: localization::text("option.sleep"), size: (180, 22), position: (200, 413)) ]
     label_sleep: nwg::Label,
 
     #[nwg_control(text: "", size: (134, 22), position: (360, 413),flags: "VISIBLE|TAB_STOP|NUMBER")]
     sleep: nwg::TextInput,
 
-
-
     #[nwg_control(text: "", size: (78, 33), position: (86, 408), flags: "VISIBLE|TAB_STOP")]
     at_detect: nwg::CheckBox,
 
     // ---- 超时 / tab 次数 ----
-    #[nwg_control(text: "远程服务器超时 (秒):", size: (134, 22), position: (11, 446))]
+    #[nwg_control(text: localization::text("option.timeout"), size: (134, 22), position: (11, 446))]
     label_timeout: nwg::Label,
-
-
- 
-
 
     #[nwg_control(size: (84, 34), position: (174, 439), flags: "VISIBLE|TAB_STOP|NUMBER")]
     remote_server_timeout: nwg::TextInput,
 
-    #[nwg_control(text: "tab按下次数", size: (134, 22), position: (291, 446))]
+    #[nwg_control(text: localization::text("option.tab.times"), size: (134, 22), position: (291, 446))]
     label_tab_times: nwg::Label,
 
     #[nwg_control(size: (111, 36), position: (433, 437), flags: "VISIBLE|TAB_STOP",
@@ -217,13 +211,13 @@ pub struct SettingsApp {
     tab_times: nwg::ComboBox<String>,
 
     // ---- 提示文本 / 保存 ----
-    #[nwg_control(text: "提示文本", size: (82, 22), position: (552, 7))]
+    #[nwg_control(text: localization::text("option.system.text"), size: (82, 22), position: (552, 7))]
     label_system_text: nwg::Label,
 
     #[nwg_control(size: (514, 439), position: (552, 39), flags: "VISIBLE|TAB_STOP|VSCROLL")]
     system_text: nwg::TextBox,
 
-    #[nwg_control(text: "保存设置", size: (145, 34), position: (916, 7))]
+    #[nwg_control(text: localization::text("option.save"), size: (145, 34), position: (916, 7))]
     #[nwg_events(OnButtonClick: [SettingsApp::save_config])]
     button_save: nwg::Button,
 }
@@ -385,11 +379,11 @@ impl SettingsApp {
             } else {
                 8
             },
-            sleep:read_int(&self.sleep, 0) as u32
+            sleep: read_int(&self.sleep, 0) as u32,
         };
 
         if let Err(e) = settings.save(&self.system_text.text()) {
-            nwg::modal_error_message(&self.window, "设置", &e);
+            nwg::modal_error_message(&self.window, localization::text("option.title"), &e);
         }
     }
     /// 对应 `IsNULL`：这几个输入框不允许为空，空的话填上占位符 `_`。
@@ -420,7 +414,8 @@ impl SettingsApp {
 
     fn refresh_possibility_label(&self) {
         self.label_possibility.set_text(&format!(
-            "发送图片概率 (%): {}",
+            "{}: {}",
+            localization::text("option.send.image.possibility"),
             self.send_image_possibility.pos()
         ));
     }
@@ -450,7 +445,7 @@ impl SettingsApp {
         match config::reset_token_count() {
             Ok(text) => self.token_count.set_text(&text),
             Err(e) => {
-                nwg::modal_error_message(&self.window, "设置", &e);
+                nwg::modal_error_message(&self.window, localization::text("option.title"), &e);
             }
         }
     }
@@ -460,7 +455,11 @@ impl SettingsApp {
     /// C# 版会 `WaitForExit()` 把消息循环一起卡住；这里改成不等待，设置窗口保持可用。
     fn open_extra_json(&self) {
         if let Err(e) = Command::new("notepad").arg("extra.json").spawn() {
-            nwg::modal_error_message(&self.window, "设置", &format!("打开 extra.json 失败：{e}"));
+            nwg::modal_error_message(
+                &self.window,
+                localization::text("option.title"),
+                &format!("{}: {e}", localization::text("error.extra.json.open")),
+            );
         }
     }
 }
@@ -543,7 +542,8 @@ fn main() {
         nwg::set_dpi_awareness();
     }
 
-    nwg::init().expect("初始化 native-windows-gui 失败");
+    let ui_init_failed = localization::text("error.ui.init");
+    nwg::init().expect(ui_init_failed);
 
     #[allow(deprecated)]
     unsafe {
@@ -553,7 +553,8 @@ fn main() {
     // 界面文案全是中文，用微软雅黑比系统默认字体好看；设置失败就沿用系统默认。
     let _ = nwg::Font::set_global_family("Microsoft YaHei UI");
 
-    let _app = SettingsApp::build_ui(Default::default()).expect("构建设置界面失败");
+    let ui_build_failed = localization::text("error.ui.build");
+    let _app = SettingsApp::build_ui(Default::default()).expect(ui_build_failed);
     nwg::dispatch_thread_events();
 }
 

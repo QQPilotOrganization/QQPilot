@@ -6,6 +6,7 @@ use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
+use crate::localization;
 use crate::log::{self, Color};
 
 const FRAMES: [&str; 10] = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
@@ -47,7 +48,8 @@ pub fn start(color: Color, text: &str) {
         }
     });
 
-    let mut slot = RUNNING.lock().expect("加载动画状态锁已损坏");
+    let poisoned = localization::get(&localization::load(), "error.lock.poisoned");
+    let mut slot = RUNNING.lock().expect(&poisoned);
     // C# 版没有停掉上一个动画就直接覆盖状态，这里先收尾，避免线程泄漏。
     if let Some(previous) = slot.take() {
         previous.stop.store(true, Ordering::Relaxed);
@@ -62,7 +64,9 @@ pub fn start(color: Color, text: &str) {
 
 /// 对应 `SpinnerLoad.Stop()`。
 pub fn stop() {
-    let running = RUNNING.lock().expect("加载动画状态锁已损坏").take();
+    let translate = localization::load();
+    let poisoned = localization::get(&translate, "error.lock.poisoned");
+    let running = RUNNING.lock().expect(&poisoned).take();
     let elapsed = match running {
         Some(running) => {
             running.stop.store(true, Ordering::Relaxed);
@@ -71,5 +75,9 @@ pub fn stop() {
         }
         None => 0.0,
     };
-    println!("\n✅ 完成！用时: {elapsed:.2} 秒\n");
+    println!(
+        "\n{}: {elapsed:.2} {}\n",
+        localization::get(&translate, "info.spinner.done"),
+        localization::get(&translate, "info.second")
+    );
 }

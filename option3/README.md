@@ -27,8 +27,36 @@ cargo build --release
 | `tokencount.txt` | 显示在「Token用量」 | 点「重置计数器」，或文件读不到时清零 |
 | `extra.json` | 不读，只交给记事本编辑 | — |
 
-写回 `config.ini` 时会先把整份文件读进来再改界面管的那 18 个键，
+写回 `config.ini` 时会先把整份文件读进来再改界面管的那 19 个键，
 所以 `scale` / `nt_data` / `system` 等界面不管的键、以及文件里原有的键顺序都会保留下来。
+
+## 文案翻译（localization.json）
+
+界面上的每一条文案都从 **`localization.json`** 取，代码里不写死中文。
+**这个文件必须和 exe 放在一起**，缺了的话所有文案会显示成 `X<key>` 并把缺的 key 打到 stderr 上
+（`localization::get` 的兜底行为，方便一眼看出漏了哪条）。
+
+`src/localization.rs` 提供三个入口：
+
+| 函数 | 用途 |
+| --- | --- |
+| `load()` | 读 `localization.json`，返回一个 `Translation` |
+| `get(&Translation, key)` | 取一条翻译，用于运行期拼接（`format!`） |
+| `text(key) -> &'static str` | 取一条翻译并固化成立即用的 `&'static str`，给 `#[nwg_control(text: ...)]` 用 |
+
+`text()` 的返回值只对每个 key 泄漏一次（缓存过），key 的数量等于控件数，不会随运行增长。
+
+翻译表的**唯一来源是 `localization.rs` 里 `default_cfg` 测试**中的那张表：
+
+```powershell
+cargo test localization::tests::default_cfg   # 重新生成 localization.json
+```
+
+新增文案的流程：改 `default_cfg` → 跑一次上面的测试生成 JSON → 在代码里用 `get`/`text` 引用。
+有一条测试会把两者对照（引用不到 / 定义没用都会显出来）。
+
+> 键名里唯一没走翻译的是服务器下拉的第一项 `"ollama"` —— 它是写回 `config.ini` 的协议值，
+> 不是给人看的文案。
 
 ## 控件对应关系
 

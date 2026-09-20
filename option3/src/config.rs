@@ -8,6 +8,8 @@ use std::path::Path;
 
 use configparser::ini::{Ini, WriteOptions};
 
+use crate::localization;
+
 /// 主配置文件。
 pub const CONFIG_FILE: &str = "config.ini";
 /// 系统提示词文件。
@@ -45,8 +47,7 @@ pub struct Settings {
     /// 只允许 7 或 8。
     pub tab_times: i32,
 
-    pub sleep:u32,
-
+    pub sleep: u32,
 }
 
 impl Default for Settings {
@@ -71,7 +72,7 @@ impl Default for Settings {
             remote_server_timeout: 300,
             force_ollama_api: false,
             tab_times: 8,
-            sleep:0,
+            sleep: 0,
         }
     }
 }
@@ -123,7 +124,9 @@ impl Settings {
             remote_server_timeout: get_i32("remote_server_timeout", d.remote_server_timeout),
             force_ollama_api: get_bool("forceollamaapi", d.force_ollama_api),
             tab_times: get_i32("tab_times", d.tab_times),
-            sleep: (get_i32("sleep", d.tab_times)).min(0) as u32,
+            // 负值会让 `as u32` 回绕，夹到 0；默认值原本误抄成了 d.tab_times。
+            // 另外原来写的是 .min(0)，会让 sleep 永远是 0（配置里的 20 存不进去）。
+            sleep: get_i32("sleep", d.sleep as i32).max(0) as u32,
         }
     }
 
@@ -145,7 +148,11 @@ impl Settings {
         if config_path.exists()
             && let Err(e) = ini.load(config_path)
         {
-            return Err(format!("读取 {} 失败：{e}", config_path.display()));
+            return Err(format!(
+                "{} {}: {e}",
+                localization::text("error.config.read"),
+                config_path.display()
+            ));
         }
 
         let values: [(&str, String); 19] = [
@@ -173,7 +180,7 @@ impl Settings {
             ),
             ("forceollamaapi", bool_text(self.force_ollama_api)),
             ("tab_times", self.tab_times.to_string()),
-            ("sleep",self.sleep.to_string())
+            ("sleep", self.sleep.to_string()),
         ];
         for (key, value) in values {
             ini.set(SECTION, key, Some(value));
@@ -182,11 +189,21 @@ impl Settings {
         // 与仓库里 config.ini 的排版保持一致：`key = value`。
         let mut options = WriteOptions::default();
         options.space_around_delimiters = true;
-        ini.pretty_write(config_path, &options)
-            .map_err(|e| format!("写入 {} 失败：{e}", config_path.display()))?;
+        ini.pretty_write(config_path, &options).map_err(|e| {
+            format!(
+                "{} {}: {e}",
+                localization::text("error.config.write"),
+                config_path.display()
+            )
+        })?;
 
-        fs::write(system_path, system_text)
-            .map_err(|e| format!("写入 {} 失败：{e}", system_path.display()))?;
+        fs::write(system_path, system_text).map_err(|e| {
+            format!(
+                "{} {}: {e}",
+                localization::text("error.config.write"),
+                system_path.display()
+            )
+        })?;
 
         Ok(())
     }
@@ -213,7 +230,8 @@ pub fn load_token_count() -> Option<String> {
 
 /// 对应 `ResetTokenConuter`：把计数器清成 0。
 pub fn reset_token_count() -> Result<String, String> {
-    fs::write(TOKEN_FILE, "0").map_err(|e| format!("写入 {TOKEN_FILE} 失败：{e}"))?;
+    fs::write(TOKEN_FILE, "0")
+        .map_err(|e| format!("{}: {e}", localization::text("error.token.reset")))?;
     Ok("0".to_string())
 }
 

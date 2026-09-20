@@ -3,6 +3,8 @@
 use std::collections::{HashMap, HashSet};
 use std::fs;
 
+use crate::localization;
+
 /// 从 `datasetTiny.json` 加载的"问题 -> 答案"表。
 pub struct TinyLangJaccard {
     qa_pairs: HashMap<String, String>,
@@ -12,18 +14,24 @@ pub struct TinyLangJaccard {
 
 impl TinyLangJaccard {
     pub fn new(json_file_path: &str) -> Result<Self, String> {
+        let translate = localization::load();
+        let t = |key: &str| localization::get(&translate, key);
+
         let content = fs::read_to_string(json_file_path)
-            .map_err(|e| format!("找不到数据集文件 {json_file_path}: {e}"))?;
+            .map_err(|e| format!("{} {json_file_path}: {e}", t("error.dataset.notfound")))?;
 
         let raw: serde_json::Map<String, serde_json::Value> = serde_json::from_str(&content)
-            .map_err(|e| format!("解析 {json_file_path} 失败: {e}"))?;
+            .map_err(|e| format!("{} {json_file_path}: {e}", t("error.dataset.parsefailed")))?;
 
         let mut qa_pairs = HashMap::new();
         let mut questions = Vec::new();
         for (question, answer) in raw {
-            let answer = answer
-                .as_str()
-                .ok_or_else(|| format!("{json_file_path} 中 {question:?} 对应的答案不是字符串"))?;
+            let answer = answer.as_str().ok_or_else(|| {
+                format!(
+                    "{} {json_file_path} {question:?}",
+                    t("error.dataset.badanswer")
+                )
+            })?;
             qa_pairs.insert(question.clone(), answer.to_string());
             questions.push(question);
         }
@@ -37,7 +45,10 @@ impl TinyLangJaccard {
     /// 对应 `TinyLangJaccardCS.Answer`：返回最相似问题对应的答案。
     pub fn answer(&self, question: &str) -> Result<String, String> {
         if self.questions.is_empty() {
-            return Err("数据集中没有问题".to_string());
+            return Err(localization::get(
+                &localization::load(),
+                "error.dataset.empty",
+            ));
         }
 
         let mut best_match = self.questions[0].clone();

@@ -16,6 +16,7 @@ use std::sync::OnceLock;
 
 use libloading::{Library, Symbol};
 
+use crate::localization;
 use crate::log;
 
 /// `Vision/dllmain.h` 的 `typedef struct Point { unsigned x, y; }`。
@@ -55,15 +56,24 @@ fn find_dll(name: &str) -> Result<PathBuf, String> {
             return Ok(candidate.clone());
         }
     }
+    let translate = localization::load();
     Err(format!(
-        "找不到 {name}，请把它和 qqpilot5.exe 放在同一目录（或当前工作目录）"
+        "{}: {name}",
+        localization::get(&translate, "error.dll.notfound")
     ))
 }
 
 fn open_library(name: &str) -> Result<Library, String> {
+    let translate = localization::load();
     let path = find_dll(name)?;
     // SAFETY: 只是加载一个动态库；DLL 自身的初始化由 DllMain 负责。
-    unsafe { Library::new(&path) }.map_err(|e| format!("无法加载 {}：{e}", path.display()))
+    unsafe { Library::new(&path) }.map_err(|e| {
+        format!(
+            "{} {}: {e}",
+            localization::get(&translate, "error.dll.loadfailed"),
+            path.display()
+        )
+    })
 }
 
 /// 取一个导出函数的地址并拷贝成普通函数指针。
@@ -71,11 +81,16 @@ fn open_library(name: &str) -> Result<Library, String> {
 /// # Safety
 /// 调用方必须保证 `T` 与 DLL 中该符号的真实签名完全一致。
 unsafe fn load_fn<T: Copy>(lib: &Library, dll: &str, name: &str) -> Result<T, String> {
+    let translate = localization::load();
     let mut symbol_name = name.as_bytes().to_vec();
     symbol_name.push(0);
     // SAFETY: 由调用方保证签名匹配；symbol_name 已按 C 字符串以 NUL 结尾。
-    let symbol: Symbol<T> = unsafe { lib.get(&symbol_name) }
-        .map_err(|e| format!("在 {dll} 中找不到导出函数 {name}：{e}"))?;
+    let symbol: Symbol<T> = unsafe { lib.get(&symbol_name) }.map_err(|e| {
+        format!(
+            "{} {dll} -> {name}: {e}",
+            localization::get(&translate, "error.dll.symbolmissing")
+        )
+    })?;
     Ok(*symbol)
 }
 

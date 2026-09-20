@@ -4,6 +4,7 @@
 //! 多尺度模板匹配"这一组语义，具体参数来自统一配置模块。
 
 use crate::config;
+use crate::localization;
 use crate::native::{self, Point, Rect};
 
 /// 抓屏结果文件名（DLL 内部写死）。
@@ -52,11 +53,13 @@ pub fn contains_blue() -> (u32, u32) {
 
 /// 按 `Vision.dll` 的错误码拼出与 C# 版一致的中文提示。
 fn error_message(code: i32, image_path: &str, template_path: &str) -> String {
+    let translate = localization::load();
+    let t = |key: &str| localization::get(&translate, key);
     match code {
-        -1 => "大图尺寸小于模板图尺寸".to_string(),
-        -2 => format!("无法加载大图: {image_path}"),
-        -3 => format!("无法加载模板图: {template_path}"),
-        other => format!("未知错误代码: {other}"),
+        -1 => t("error.image.tinier"),
+        -2 => format!("{}: {image_path}", t("error.image.loadfailed")),
+        -3 => format!("{}: {template_path}", t("error.template.loadfailed")),
+        other => format!("{}: {other}", t("error.unknown.code")),
     }
 }
 

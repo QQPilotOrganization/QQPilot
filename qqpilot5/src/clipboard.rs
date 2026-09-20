@@ -9,6 +9,7 @@ use std::sync::{Mutex, MutexGuard, OnceLock};
 
 use arboard::Clipboard;
 
+use crate::localization;
 use crate::log;
 
 static CLIPBOARD: OnceLock<Mutex<Option<Clipboard>>> = OnceLock::new();
@@ -18,7 +19,11 @@ fn clipboard() -> Option<MutexGuard<'static, Option<Clipboard>>> {
     match mutex.lock() {
         Ok(guard) => Some(guard),
         Err(e) => {
-            log::error(format!("剪贴板状态锁已损坏: {e}"));
+            let translate = localization::load();
+            log::error(format!(
+                "{}: {e}",
+                localization::get(&translate, "error.clipboard.lock")
+            ));
             None
         }
     }
@@ -26,17 +31,21 @@ fn clipboard() -> Option<MutexGuard<'static, Option<Clipboard>>> {
 
 /// 对应 `ClipboardService.SetText(text)`。
 pub fn set_text(text: &str) -> bool {
+    let translate = localization::load();
     let Some(mut guard) = clipboard() else {
         return false;
     };
     let Some(clipboard) = guard.as_mut() else {
-        log::error("打开剪贴板失败");
+        log::error(localization::get(&translate, "error.clipboard.open"));
         return false;
     };
     match clipboard.set_text(text.to_string()) {
         Ok(()) => true,
         Err(e) => {
-            log::error(format!("写入剪贴板失败: {e}"));
+            log::error(format!(
+                "{}: {e}",
+                localization::get(&translate, "error.clipboard.write")
+            ));
             false
         }
     }
@@ -44,11 +53,12 @@ pub fn set_text(text: &str) -> bool {
 
 /// 对应 `clipboard.GetText() ?? ""`：取不到内容时返回空串。
 pub fn get_text() -> String {
+    let translate = localization::load();
     let Some(mut guard) = clipboard() else {
         return String::new();
     };
     let Some(clipboard) = guard.as_mut() else {
-        log::error("打开剪贴板失败");
+        log::error(localization::get(&translate, "error.clipboard.open"));
         return String::new();
     };
     clipboard.get_text().unwrap_or_default()

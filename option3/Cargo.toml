@@ -10,6 +10,8 @@ native-windows-gui = { version = "1.0.13", features = ["high-dpi"] }
 native-windows-derive = "1.0.5"
 # indexmap 特性用于保持 config.ini 里的键顺序，写回时不会打乱文件。
 configparser = { version = "3.3.0", features = ["indexmap"] }
+# preserve_order 让生成的 localization.json 保持声明顺序。
+serde_json = { version = "1", features = ["preserve_order"] }
 # 只为了 GetWindowRect / GetClientRect：把 C# 的 ClientSize 换算成窗口外框尺寸。
 # native-windows-gui 本身就依赖 winapi 0.3，不会多引入东西。
 winapi = { version = "0.3", features = ["winuser"] }

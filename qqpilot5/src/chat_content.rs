@@ -5,6 +5,8 @@ use std::path::Path;
 
 use chrono::Local;
 
+use crate::localization;
+
 /// 一条从聊天记录里解析出来的消息。
 pub struct ChatContent {
     pub username: String,
@@ -34,7 +36,14 @@ impl ChatContent {
 
     /// 对应 `ChatContent.Report()`：带图片存在性检查的可读摘要。
     pub fn report(&self) -> String {
-        let prefix = if self.own_by_myself { "[你]" } else { "" };
+        let translate = localization::load();
+        let t = |key: &str| localization::get(&translate, key);
+
+        let prefix = if self.own_by_myself {
+            t("chat.self.prefix")
+        } else {
+            String::new()
+        };
         let content = &self.text;
 
         let valid_images: Vec<&String> = self
@@ -44,7 +53,7 @@ impl ChatContent {
             .collect();
 
         let image_part = if valid_images.is_empty() {
-            "无".to_string()
+            t("chat.noimage")
         } else {
             let joined = valid_images
                 .iter()
@@ -55,9 +64,10 @@ impl ChatContent {
         };
 
         format!(
-            "{prefix}{username}: {content}\n{time}\n 图片：{image_part}",
+            "{prefix}{username}: {content}\n{time}\n {label}{image_part}",
             username = self.username,
             time = self.time,
+            label = t("chat.image.label"),
         )
     }
 }

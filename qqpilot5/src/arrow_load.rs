@@ -6,6 +6,7 @@ use std::sync::{Arc, LazyLock, Mutex};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
+use crate::localization;
 use crate::log::{self, Color};
 
 const FRAMES: [&str; 10] = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
@@ -80,7 +81,8 @@ pub fn start_loading(color: Color, text: &str) {
         }
     });
 
-    let mut slot = RUNNING.lock().expect("加载动画状态锁已损坏");
+    let poisoned = localization::get(&localization::load(), "error.lock.poisoned");
+    let mut slot = RUNNING.lock().expect(&poisoned);
     if let Some(previous) = slot.take() {
         previous.stop.store(true, Ordering::Relaxed);
         let _ = previous.handle.join();
@@ -94,7 +96,9 @@ pub fn start_loading(color: Color, text: &str) {
 
 /// 对应 `ArrowLoad.StopLoading()`。
 pub fn stop_loading() {
-    let running = RUNNING.lock().expect("加载动画状态锁已损坏").take();
+    let translate = localization::load();
+    let poisoned = localization::get(&translate, "error.lock.poisoned");
+    let running = RUNNING.lock().expect(&poisoned).take();
     let elapsed = match running {
         Some(running) => {
             running.stop.store(true, Ordering::Relaxed);
@@ -103,6 +107,9 @@ pub fn stop_loading() {
         }
         None => 0.0,
     };
-    println!("\n用时: {elapsed:.2}s");
+    println!(
+        "\n{}: {elapsed:.2}s",
+        localization::get(&translate, "info.elapsed")
+    );
     println!();
 }

@@ -20,6 +20,7 @@ use std::sync::OnceLock;
 use configparser::ini::Ini;
 use serde_json::{Map, Value};
 
+use crate::localization;
 use crate::log::{self, Level};
 
 /// config.ini 的位置（相对于进程当前工作目录，与 C# 版一致）。
@@ -86,8 +87,8 @@ pub struct Config {
     pub system_prompt: String,
     /// extra.json 的内容，会合并进请求体。
     pub extra: Map<String, Value>,
-    
-    pub sleep:u32,
+
+    pub sleep: u32,
 }
 
 impl Default for Config {
@@ -115,7 +116,7 @@ impl Default for Config {
             force_ollama_api: false,
             system_prompt: String::new(),
             extra: Map::new(),
-            sleep:0
+            sleep: 0,
         }
     }
 }
@@ -128,8 +129,13 @@ impl Config {
         let path = path.as_ref();
         let mut ini = Ini::new();
         if let Err(e) = ini.load(path.to_string_lossy().to_string()) {
+            let translate = localization::load();
             log::print_with(
-                format!("读取 {} 失败：{e}，本次全部使用默认配置", path.display()),
+                format!(
+                    "{} {}: {e}",
+                    localization::get(&translate, "error.config.readfailed"),
+                    path.display()
+                ),
                 Level::Error,
             );
         }
@@ -163,7 +169,8 @@ impl Config {
             force_ollama_api: get_bool(&ini, "forceollamaapi", d.force_ollama_api),
             system_prompt: load_system_prompt(SYSTEM_PROMPT_FILE),
             extra: load_extra(EXTRA_FILE),
-            sleep:(get_int(&ini, "sleep", 0 )).min(0) as u32
+            // 负数会造成 u32 回绕，夹到 0；正值原样保留（原来写的是 .min(0)，会让 sleep 永远是 0）
+            sleep: (get_int(&ini, "sleep", 0)).max(0) as u32,
         }
     }
 }
@@ -188,8 +195,14 @@ fn raw(ini: &Ini, key: &str) -> Option<String> {
 }
 
 fn warn_missing(key: &str, default: &impl Display) {
+    let translate = localization::load();
+    let t = |k: &str| localization::get(&translate, k);
     log::print_with(
-        format!("[配置] config.ini 缺少 {key}，使用默认值 {default}"),
+        format!(
+            "{} {key}, {} {default}",
+            t("warning.config.missingkey"),
+            t("warning.config.usedefault")
+        ),
         Level::Warn,
     );
 }
@@ -208,8 +221,14 @@ fn parse_or_warn<T: FromStr + Display>(key: &str, value: &str, default: T) -> T 
     match value.trim().parse::<T>() {
         Ok(v) => v,
         Err(_) => {
+            let translate = localization::load();
+            let t = |k: &str| localization::get(&translate, k);
             log::print_with(
-                format!("[配置] {key} 的值 {value:?} 无法解析，使用默认值 {default}"),
+                format!(
+                    "{} {key}: {value:?}, {} {default}",
+                    t("warning.config.badvalue"),
+                    t("warning.config.usedefault")
+                ),
                 Level::Warn,
             );
             default
@@ -267,14 +286,25 @@ fn load_extra(path: &str) -> Map<String, Value> {
     match serde_json::from_str::<Value>(&text) {
         Ok(Value::Object(map)) => map,
         Ok(_) => {
+            let translate = localization::load();
             log::print_with(
-                format!("[配置] {path} 的顶层不是 JSON 对象，已忽略"),
+                format!(
+                    "{}: {path}",
+                    localization::get(&translate, "warning.config.badjson")
+                ),
                 Level::Warn,
             );
             Map::new()
         }
         Err(e) => {
-            log::print_with(format!("[配置] 解析 {path} 失败：{e}，已忽略"), Level::Warn);
+            let translate = localization::load();
+            log::print_with(
+                format!(
+                    "{} {path}: {e}",
+                    localization::get(&translate, "warning.config.parsefailed")
+                ),
+                Level::Warn,
+            );
             Map::new()
         }
     }
