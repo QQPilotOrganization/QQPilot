@@ -1,0 +1,54 @@
+
+## 配置要求
+
+> 
+>  ⚠️该程序不支持无头模式（至少外接一台显示器）
+> 
+
+### 最低要求
+
+
+尚不支持32位。
+
+### x64,x86_64,AMD64
+
+#### Windows
+ - Windows 8.1 或更高版本 64位
+
+ - 单核处理器，主频1GHz以上
+
+ - 1GB RAM
+
+ - 200M 可用空间
+
+ - 1920x1080 显示器
+
+> 对于Windows7 可以尝试安装 [VkKex](https://github.com/YuZhouRen86/VxKex-NEXT)
+
+
+
+### ARM64
+
+ - Windows 10 ARM64 及以上
+
+ - 2GB RAM
+
+ - 200M 可用空间
+
+ - 1920x1080 显示器
+
+
+### 推荐配置
+
+ - Windows 11 x64
+
+ - 4核心，2GHz以上
+
+ - 4GB RAM
+
+ - 12GB 可用空间(用于Ollama)
+
+ - 支持CUDA的GPU
+
+- 1920x1080 显示器
+ 
