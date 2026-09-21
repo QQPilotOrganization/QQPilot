@@ -45,7 +45,7 @@ bool SmoothMousegoto(unsigned x, unsigned y)
 
 	mouseSettings.gravity = 16.0f;
 	mouseSettings.wind = 1.0f;
-	mouseSettings.maxStep = 60;
+	mouseSettings.maxStep = 90;
 	mouseSettings.targetArea = 20.0f;
 	mouseSettings.minWait = 1;
 	mouseSettings.maxWait = 2;

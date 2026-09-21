@@ -11,10 +11,20 @@ use serde_json::Value::{self};
 type Translation = Value;
 
 const DATA1: &str = r#"{}"#;
-
+fn locale() -> String {
+    let current_locale: String = current_locale::current_locale().unwrap_or(String::from("zh-CN"));
+    current_locale
+}
 /// 读取 `localization.json`。
 pub(crate) fn load() -> Translation {
-    let data = std::fs::read_to_string("localization.json").unwrap_or_default();
+    let current_locale = locale();
+    let data;
+    if !std::path::Path::new(&format!("{}.json", current_locale)).exists() {
+        data = std::fs::read_to_string("zh-CN.json").unwrap_or_default();
+    } else {
+        data = std::fs::read_to_string(format!("{}.json", current_locale)).unwrap_or_default();
+    }
+
     let v: Translation =
         serde_json::from_str(&data).unwrap_or(serde_json::from_str(DATA1).unwrap());
     v
@@ -101,7 +111,7 @@ mod tests {
             "error.ui.build": "构建界面失败"
         });
 
-        std::fs::write("localization.json", json.to_string()).unwrap();
+        std::fs::write(format!("{}.json",locale()), json.to_string()).unwrap();
     }
 
     /// 生成 translation 表并跑一段断言。

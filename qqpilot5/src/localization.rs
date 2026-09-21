@@ -5,10 +5,23 @@ use crate::log;
 
 const DATA1: &str = r#"{}"#;
 pub(crate) fn load() -> Translation {
-    let data = std::fs::read_to_string("localization.json").unwrap_or_default();
+    let current_locale = locale();
+    let data;
+    if !std::path::Path::new(&format!("{}.json", current_locale)).exists() {
+        data = std::fs::read_to_string("zh-CN.json").unwrap_or_default();
+        // log::warn("未找到当前语言的翻译。");
+    } else {
+        data = std::fs::read_to_string(format!("{}.json", current_locale)).unwrap_or_default();
+    }
+
     let v: Translation =
         serde_json::from_str(&data).unwrap_or(serde_json::from_str(DATA1).unwrap());
     v
+}
+
+fn locale() -> String {
+    let current_locale: String = current_locale::current_locale().unwrap_or(String::from("zh-CN"));
+    current_locale
 }
 pub(crate) fn get(localization: &Translation, src: &str) -> String {
     if let Some(result) = localization.get(src)
@@ -124,8 +137,8 @@ mod tests {
             "info.spinner.done": "✅ 完成！用时",
             "error.lock.poisoned": "状态锁已损坏"
         });
-
-        std::fs::write("localization.json", json.to_string()).unwrap();
+        println!("{}.json", locale());
+        std::fs::write(format!("{}.json", locale()), json.to_string()).unwrap();
     }
     /// 生成 translation 表并跑一段断言。
     ///
