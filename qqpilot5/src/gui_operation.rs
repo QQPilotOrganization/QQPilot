@@ -135,7 +135,7 @@ pub fn send_text(text: &str, comment_section: RectI) {
     ));
 
     for item in text.split("[[NEXT]]") {
-        log::print(format!("{item};"));
+        // log::print(format!("{item};"));
 
         let inputs: Vec<&str> = item.split('\n').collect();
         for line in &inputs[..inputs.len() - 1] {

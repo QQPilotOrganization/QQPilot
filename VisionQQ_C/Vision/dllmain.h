@@ -31,6 +31,5 @@ struct PackedImage
 	int width, height, channels;
 };
 EXPORT int matchTemplatesBegin(const char* imagePath, const char* templatePath, int tolerance, int count);
-//void matchTemplate(int img_h, int template_h, int img_w, int template_w, PackedImage& imgObj, PackedImage& tplObj, int tolerance);
 EXPORT Point matchTemplateNext(int subscript);
 EXPORT void matchTemplateEnd();

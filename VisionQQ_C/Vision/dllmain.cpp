@@ -252,7 +252,7 @@ int matchTemplatesMultiScaleBegin(const char* imagePath, const char* templatePat
 {
     revelants.clear(); // 清空全局结果列表
 
-    const float factors[] = { 1.0f,1.5f, 0.5f, 0.6f, 0.7f, 0.8f, 0.9f , 1.1f, 1.2f, 1.3f, 1.4f, 1.6f, 1.7f, 1.8f, 1.9f,2.0f };
+    const float factors[] = { 1.0f,1.25f,1.5f,1.75f,2.0f,2.25f,2.5f,2.75f,3.0f, 1.1f, 1.2f, 1.3f, 1.4f, 1.6f, 1.7f, 1.8f, 1.9f };
     const int numFactors = sizeof(factors) / sizeof(factors[0]);
 
     // 1. 加载大图 (只加载一次)
@@ -279,11 +279,11 @@ int matchTemplatesMultiScaleBegin(const char* imagePath, const char* templatePat
     return MatchTemplateByFactors(numFactors, factors, originalTplObj, template_w, template_h, img_w, img_h, template_channels, imgObj, tolerance, count, image_data, template_data);
 }
 
-int MatchTemplateByFactors(const int numFactors, const float factors[], PackedImage& originalTplObj, int template_w, int template_h, int img_w, int img_h, int template_channels, PackedImage& imgObj, int tolerance, int count, unsigned char* image_data, unsigned char* template_data)
+static int MatchTemplateByFactors(const int numFactors, const float factors[], PackedImage& originalTplObj, int template_w, int template_h, int img_w, int img_h, int template_channels, PackedImage& imgObj, int tolerance, int count, unsigned char* image_data, unsigned char* template_data)
 {
     for (int i = 0; i < numFactors; ++i) {
         float factor = factors[i];
-        std::cout << "factor " << factor << std::endl;
+        std::cout << "f " << factor << "\r";
 
         PackedImage currentTplObj;
         unsigned char* resizedData = nullptr;

@@ -51,7 +51,6 @@ pub fn contains_blue() -> (u32, u32) {
     (point.x, point.y)
 }
 
-/// 按 `Vision.dll` 的错误码拼出与 C# 版一致的中文提示。
 fn error_message(code: i32, image_path: &str, template_path: &str) -> String {
     let translate = localization::load();
     let t = |key: &str| localization::get(&translate, key);
