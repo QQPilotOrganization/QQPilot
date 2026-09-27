@@ -54,13 +54,13 @@ bool SmoothMousegoto(unsigned x, unsigned y)
 	float split =50;
 	split = std::floorf(split);
 
-	std::cout << split<< std::endl;
+	//std::cout << split<< std::endl;
 	mouseSettings.maxStep = split;
 	std::vector<MousePoint> p=windMouse.GeneratePoints(mouseSettings);
 	int waitbefore = 0;
 	for (auto point : p)
 	{
-		Mousegoto(point.x, point.y);
+		Mousegoto(point.x, point.y);					  s
 		std::this_thread::sleep_for(std::chrono::milliseconds(point.wait-waitbefore));
 		waitbefore = point.wait;
 		//std::cout <<
