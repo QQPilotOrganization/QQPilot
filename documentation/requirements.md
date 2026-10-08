@@ -23,7 +23,6 @@
 
  - 1920x1080 显示器
 
-> 对于Windows7 可以尝试安装 [VkKex](https://github.com/YuZhouRen86/VxKex-NEXT)
 
 
 
