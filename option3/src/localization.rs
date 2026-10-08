@@ -89,15 +89,10 @@ mod tests {
         FILE_LOCK.lock().unwrap_or_else(|e| e.into_inner())
     }
 
-    /// 中文翻译表，也就是键集合的唯一来源。
-    ///
-    /// 新增文案时改这张表，再跑一次测试即可生成 `zh-CN.json`。
-    /// 注意这里写死的目标是 `zh-CN.json`（兜底语言），不能跟着开发机的系统语言跑，
-    /// 否则在英文机器上会把中文写进 `en-US.json`。
-    ///
-    /// 这是不带锁的裸版本：`Mutex` 不可重入，加锁交给 [`with_default_cfg`]
-    /// 和下面那个 `default_cfg` 测试，这里再拿一次会死锁。
+    /// 用qqpilot5的那个
     fn write_default_cfg() {
+
+
         let json = json!({
             // --- 窗口 / 按钮 ---
             "option.title": "设置",

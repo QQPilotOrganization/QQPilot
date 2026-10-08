@@ -948,7 +948,7 @@ dependencies = [
 
 [[package]]
 name = "qqpilot5"
-version = "0.1.0"
+version = "1.5.20"
 dependencies = [
  "arboard",
  "base64 0.22.1",
