@@ -30,6 +30,13 @@ pub const EXTRA_FILE: &str = "extra.json";
 /// 系统提示词文件。
 pub const SYSTEM_PROMPT_FILE: &str = "system.txt";
 
+/// `max_tokens` 的默认值。
+pub const MAX_TOKENS_DEFAULT: u32 = 100_000;
+/// `max_tokens` 允许的下限（太小模型就说不完一句话）。
+pub const MAX_TOKENS_MIN: u32 = 4;
+/// `max_tokens` 允许的上限（防止手滑写成天文数字把服务打爆）。
+pub const MAX_TOKENS_MAX: u32 = 1_048_576;
+
 /// config.ini 里的节名。
 const SECTION: &str = "general";
 
@@ -81,7 +88,9 @@ pub struct Config {
     pub remote_server_timeout: u64,
     /// 强制使用 Ollama `/api/chat` 协议。
     pub force_ollama_api: bool,
-
+    /// 最大token
+    pub max_tokens: u32,
+    pub enable_thinking: bool,
     // --- 原本读自独立文件的内容，一并集中到这里 ---
     /// system.txt 的内容。
     pub system_prompt: String,
@@ -95,7 +104,7 @@ impl Default for Config {
     /// 出厂默认值，与仓库里 config.ini 的取值保持一致。
     fn default() -> Self {
         Self {
-            version: "1.5.19".to_string(),
+            version: "latest".to_string(),
             name: String::new(),
             width: 1285,
             height: 720,
@@ -117,6 +126,8 @@ impl Default for Config {
             system_prompt: String::new(),
             extra: Map::new(),
             sleep: 0,
+            max_tokens: MAX_TOKENS_DEFAULT,
+            enable_thinking: true,
         }
     }
 }
@@ -169,8 +180,10 @@ impl Config {
             force_ollama_api: get_bool(&ini, "forceollamaapi", d.force_ollama_api),
             system_prompt: load_system_prompt(SYSTEM_PROMPT_FILE),
             extra: load_extra(EXTRA_FILE),
-            // 负数会造成 u32 回绕，夹到 0；正值原样保留（原来写的是 .min(0)，会让 sleep 永远是 0）
-            sleep: (get_int(&ini, "sleep", 0)).max(0) as u32,
+            sleep: get_uint(&ini, "sleep", 0),
+            max_tokens: get_uint(&ini, "max_tokens", MAX_TOKENS_DEFAULT)
+                .clamp(MAX_TOKENS_MIN, MAX_TOKENS_MAX),
+            enable_thinking: get_bool(&ini, "enable_thinking", true),
         }
     }
 }
@@ -231,6 +244,15 @@ fn parse_or_warn<T: FromStr + Display>(key: &str, value: &str, default: T) -> T 
                 ),
                 Level::Warn,
             );
+            default
+        }
+    }
+}
+fn get_uint(ini: &Ini, key: &str, default: u32) -> u32 {
+    match raw(ini, key) {
+        Some(v) => parse_or_warn(key, &v, default),
+        None => {
+            warn_missing(key, &default);
             default
         }
     }
@@ -385,6 +407,62 @@ mod tests {
         let path = write_temp("qqpilot5-config-badnum.ini", "[general]\nwidth = abc\n");
         let config = Config::load(&path);
         assert_eq!(config.width, Config::default().width);
+    }
+
+    #[test]
+    fn unbounded() {
+        let path = write_temp(
+            "qqpilot5-config-ub.ini",
+            "[general]\nmax_tokens = -99999999\nsleep = -999999\n",
+        );
+        let config = Config::load(&path);
+        assert_eq!(config.max_tokens, MAX_TOKENS_DEFAULT);
+        assert_eq!(config.sleep, 0);
+
+        let path = write_temp(
+            "qqpilot5-config-ub.ini",
+            "[general]\nmax_tokens = 99999999999999999999999999999999999999",
+        );
+        let config = Config::load(&path);
+        assert_eq!(config.max_tokens, MAX_TOKENS_DEFAULT);
+    }
+
+    /// 解析不出来的值走默认；解析得出来但不在范围内，夹到边界（不能直接丢掉）。
+    #[test]
+    fn max_tokens_is_clamped_to_the_allowed_range() {
+        let load_with = |value: &str| {
+            let path = write_temp(
+                "qqpilot5-config-max-tokens.ini",
+                &format!("[general]\nmax_tokens = {value}\n"),
+            );
+            Config::load(&path).max_tokens
+        };
+
+        assert_eq!(load_with("1"), MAX_TOKENS_MIN, "低于下限应该抬到下限");
+        assert_eq!(load_with("0"), MAX_TOKENS_MIN);
+        assert_eq!(load_with("4096"), 4096, "范围内的值要原样保留");
+        assert_eq!(load_with("1048577"), MAX_TOKENS_MAX, "高于上限应该压到上限");
+    }
+
+    /// `enable_thinking` 与其它布尔项同一套口味：只认 "true"，缺省为开启。
+    #[test]
+    fn enable_thinking_defaults_to_on() {
+        let load_with = |body: &str| {
+            let path = write_temp("qqpilot5-config-thinking.ini", body);
+            Config::load(&path).enable_thinking
+        };
+
+        assert!(load_with("[general]\n"), "缺省应该是开启");
+        assert!(load_with("[general]\nenable_thinking = true\n"));
+        assert!(load_with("[general]\nenable_thinking = TRUE\n"));
+        assert!(!load_with("[general]\nenable_thinking = false\n"));
+        assert!(!load_with("[general]\nenable_thinking = 0\n"));
+    }
+
+    #[test]
+    fn sleep_keeps_positive_values() {
+        let path = write_temp("qqpilot5-config-sleep.ini", "[general]\nsleep = 20\n");
+        assert_eq!(Config::load(&path).sleep, 20);
     }
 
     #[test]

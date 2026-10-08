@@ -21,6 +21,13 @@ const SECTION: &str = "general";
 /// 对应 C# 的 `NULSTr`：文本框内容为空时用它占位，避免写出空值。
 pub const NUL_STR: &str = "_";
 
+/// `max_tokens` 的默认值。
+pub const MAX_TOKENS_DEFAULT: u32 = 100_000;
+/// `max_tokens` 允许的下限（太小模型就说不完一句话）。
+pub const MAX_TOKENS_MIN: u32 = 4;
+/// `max_tokens` 允许的上限（防止手滑写成天文数字把服务打爆）。
+pub const MAX_TOKENS_MAX: u32 = 1_048_576;
+
 /// 界面上可编辑的全部配置项。
 ///
 /// 字段严格对应 C# 版 `Form1_Load` 读取、`SaveConfig` 写回的那批键；
@@ -48,13 +55,16 @@ pub struct Settings {
     pub tab_times: i32,
 
     pub sleep: u32,
+
+    pub max_tokens: u32,
+    pub enable_thinking: bool,
 }
 
 impl Default for Settings {
     /// 出厂默认值，与仓库里 config.ini 的取值一致。
     fn default() -> Self {
         Self {
-            version: "1.5.19".to_string(),
+            version: "latest".to_string(),
             name: String::new(),
             width: 1285,
             height: 720,
@@ -73,6 +83,8 @@ impl Default for Settings {
             force_ollama_api: false,
             tab_times: 8,
             sleep: 0,
+            max_tokens: MAX_TOKENS_DEFAULT,
+            enable_thinking: true,
         }
     }
 }
@@ -93,6 +105,11 @@ impl Settings {
         let get_i32 = |key: &str, fallback: i32| {
             ini.get(SECTION, key)
                 .and_then(|v| v.trim().parse::<i32>().ok())
+                .unwrap_or(fallback)
+        };
+        let get_u32 = |key: &str, fallback: u32| {
+            ini.get(SECTION, key)
+                .and_then(|v| v.trim().parse::<u32>().ok())
                 .unwrap_or(fallback)
         };
         let get_bool = |key: &str, fallback: bool| {
@@ -127,6 +144,9 @@ impl Settings {
             // 负值会让 `as u32` 回绕，夹到 0；默认值原本误抄成了 d.tab_times。
             // 另外原来写的是 .min(0)，会让 sleep 永远是 0（配置里的 20 存不进去）。
             sleep: get_i32("sleep", d.sleep as i32).max(0) as u32,
+            max_tokens: get_u32("max_tokens", MAX_TOKENS_DEFAULT)
+                .clamp(MAX_TOKENS_MIN, MAX_TOKENS_MAX),
+            enable_thinking: get_bool("enable_thinking", true),
         }
     }
 
@@ -155,7 +175,7 @@ impl Settings {
             ));
         }
 
-        let values: [(&str, String); 19] = [
+        let values: [(&str, String); 21] = [
             ("version", self.version.clone()),
             ("name", self.name.clone()),
             ("width", self.width.to_string()),
@@ -181,6 +201,13 @@ impl Settings {
             ("forceollamaapi", bool_text(self.force_ollama_api)),
             ("tab_times", self.tab_times.to_string()),
             ("sleep", self.sleep.to_string()),
+            (
+                "max_tokens",
+                self.max_tokens
+                    .clamp(MAX_TOKENS_MIN, MAX_TOKENS_MAX)
+                    .to_string(),
+            ),
+            ("enable_thinking", bool_text(self.enable_thinking)),
         ];
         for (key, value) in values {
             ini.set(SECTION, key, Some(value));
@@ -323,5 +350,80 @@ mod tests {
         let dir = temp_dir("option3-config-absent");
         let settings = Settings::load_from(dir.join("nope.ini"));
         assert_eq!(settings, Settings::default());
+    }
+
+    /// 新版设置（最大 token / 思考开关）也要能读出来、并且原样写回去。
+    ///
+    /// 这两项是 C# 版没有的，`save_to` 的键表曾经没带它们 ——
+    /// 那样界面点一次保存就会把它们丢掉。
+    #[test]
+    fn new_settings_round_trip() {
+        let dir = temp_dir("option3-config-new-settings");
+        let config = dir.join("config.ini");
+        let system = dir.join("system.txt");
+        fs::write(
+            &config,
+            "[general]\nmax_tokens = 4096\nenable_thinking = false\n",
+        )
+        .unwrap();
+
+        let loaded = Settings::load_from(&config);
+        assert_eq!(loaded.max_tokens, 4096);
+        assert!(!loaded.enable_thinking);
+
+        loaded.save_to(&config, "", &system).unwrap();
+
+        let written = fs::read_to_string(&config).unwrap();
+        assert!(written.contains("max_tokens = 4096"), "{written}");
+        assert!(written.contains("enable_thinking = false"), "{written}");
+
+        let reloaded = Settings::load_from(&config);
+        assert_eq!(reloaded.max_tokens, 4096);
+        assert!(!reloaded.enable_thinking);
+    }
+
+    /// `max_tokens` 缺失时用默认值，超范围时夹到边界。
+    #[test]
+    fn max_tokens_is_clamped_to_the_allowed_range() {
+        let load_with = |body: &str| {
+            let dir = temp_dir("option3-config-max-tokens");
+            let config = dir.join("config.ini");
+            fs::write(&config, body).unwrap();
+            Settings::load_from(&config).max_tokens
+        };
+
+        assert_eq!(load_with("[general]\n"), MAX_TOKENS_DEFAULT);
+        assert_eq!(
+            load_with("[general]\nmax_tokens = 1\n"),
+            MAX_TOKENS_MIN,
+            "低于下限要抬到下限"
+        );
+        assert_eq!(load_with("[general]\nmax_tokens = 8192\n"), 8192);
+        assert_eq!(
+            load_with("[general]\nmax_tokens = 99999999\n"),
+            MAX_TOKENS_MAX,
+            "高于上限要压到上限"
+        );
+        // 写不回去的数字（负数 / 溢出）当缺失处理
+        assert_eq!(
+            load_with("[general]\nmax_tokens = -5\n"),
+            MAX_TOKENS_DEFAULT
+        );
+    }
+
+    /// `enable_thinking` 与其它布尔项同一套口味：只认 `true`，缺省为开启。
+    #[test]
+    fn enable_thinking_defaults_to_on() {
+        let load_with = |body: &str| {
+            let dir = temp_dir("option3-config-thinking");
+            let config = dir.join("config.ini");
+            fs::write(&config, body).unwrap();
+            Settings::load_from(&config).enable_thinking
+        };
+
+        assert!(load_with("[general]\n"), "缺省应该是开启");
+        assert!(load_with("[general]\nenable_thinking = TRUE\n"));
+        assert!(!load_with("[general]\nenable_thinking = false\n"));
+        assert!(!load_with("[general]\nenable_thinking = 0\n"));
     }
 }

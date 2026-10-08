@@ -13,9 +13,10 @@ use winapi::um::winuser::{
 
 use config::{NUL_STR, Settings};
 
-const CLIENT_WIDTH: u32 = 1075;
-const CLIENT_HEIGHT: u32 = 500;
+use crate::config::MAX_TOKENS_DEFAULT;
 
+const CLIENT_WIDTH: u32 = 1075;
+const CLIENT_HEIGHT: u32 = 525;
 
 const MARGIN_RIGHT: i32 = 20;
 const MARGIN_BOTTOM: i32 = 50;
@@ -100,7 +101,6 @@ pub struct SettingsApp {
     #[nwg_events(OnTextInput: [SettingsApp::guard_empty_text])]
     model_name: nwg::TextInput,
 
-
     #[nwg_control(text: localization::text("option.vision.model"), size: (90, 33), position: (11, 170), flags: "VISIBLE|TAB_STOP")]
     is_vision_model: nwg::CheckBox,
 
@@ -128,7 +128,6 @@ pub struct SettingsApp {
 
     // #[nwg_control(text: localization::text("option.force.ollama"), size: (2000  , 22), position: (336, 302))]
     // label_force_ollama: nwg::Label,
-
     #[nwg_control(text: localization::text("option.force.ollama"), size: (200, 33), position: (336, 297), flags: "VISIBLE|TAB_STOP")]
     force_ollama_api: nwg::CheckBox,
 
@@ -148,9 +147,11 @@ pub struct SettingsApp {
 
     // #[nwg_control(text: localization::text("option.auto.focusing"), size: (170, 22), position: (336, 341))]
     // label_auto_focusing: nwg::Label,
-
     #[nwg_control(text: localization::text("option.auto.focusing"), size: (170, 33), position: (336, 330), flags: "VISIBLE|TAB_STOP")]
     auto_focusing: nwg::CheckBox,
+
+    #[nwg_control(text: localization::text("option.enable.thinking"), size: (170, 33), position: (350, 475), flags: "VISIBLE|TAB_STOP")]
+    enable_thinking: nwg::CheckBox,
 
     // ---- 发送图片概率 ----
     #[nwg_control(text: localization::text("option.send.image.possibility"), size: (118, 22), position: (9, 378))]
@@ -176,6 +177,12 @@ pub struct SettingsApp {
 
     #[nwg_control(size: (84, 34), position: (174, 439), flags: "VISIBLE|TAB_STOP|NUMBER")]
     remote_server_timeout: nwg::TextInput,
+
+    #[nwg_control(text: localization::text("option.max.tokens"), size: (190, 22), position: (11, 475))]
+    label_max_tokens: nwg::Label,
+
+    #[nwg_control(size: (84, 34), position: (204, 475), flags: "VISIBLE|TAB_STOP|NUMBER")]
+    max_tokens: nwg::TextInput,
 
     #[nwg_control(text: localization::text("option.tab.times"), size: (134, 22), position: (291, 446))]
     label_tab_times: nwg::Label,
@@ -289,6 +296,8 @@ impl SettingsApp {
             .set_text(&settings.remote_server_timeout.to_string());
         self.force_ollama_api
             .set_check_state(check_state(settings.force_ollama_api));
+        self.enable_thinking
+            .set_check_state(check_state(settings.enable_thinking));
 
         self.send_image_possibility
             .set_pos(settings.send_image_possibility.clamp(0, 100) as usize);
@@ -318,6 +327,7 @@ impl SettingsApp {
                 None => config::reset_token_count().unwrap_or_else(|_| "0".to_string()),
             });
         self.sleep.set_text(&settings.sleep.to_string());
+    self.max_tokens.set_text(&settings.max_tokens.to_string());
     }
 
     /// 对应 `Form1.SaveConfig`：把界面上的值攒成 [`Settings`] 并写回文件。
@@ -353,7 +363,9 @@ impl SettingsApp {
             } else {
                 8
             },
-            sleep: read_int(&self.sleep, 0) as u32,
+            sleep: read_uint(&self.sleep, 0),
+            enable_thinking: self.enable_thinking.check_state() == nwg::CheckBoxState::Checked,
+            max_tokens: read_uint(&self.max_tokens, MAX_TOKENS_DEFAULT),
         };
 
         if let Err(e) = settings.save(&self.system_text.text()) {
@@ -498,7 +510,9 @@ fn check_state(value: bool) -> nwg::CheckBoxState {
 fn read_int(input: &nwg::TextInput, fallback: i32) -> i32 {
     input.text().trim().parse::<i32>().unwrap_or(fallback)
 }
-
+fn read_uint(input: &nwg::TextInput, fallback: u32) -> u32 {
+    input.text().trim().parse::<u32>().unwrap_or(fallback)
+}
 /// 把输入框里的数字夹进范围；不是数字就原样留着，等用户继续输。
 fn clamp_text(input: &nwg::TextInput, min: i32, max: i32) {
     let Ok(value) = input.text().trim().parse::<i32>() else {
@@ -533,7 +547,7 @@ fn main() {
 }
 
 // impl  Drop for  SettingsApp  {
-//   fn drop(&mut self) { 
+//   fn drop(&mut self) {
 //     self.save_config();
 //  }
 // }

@@ -24,21 +24,45 @@ use crate::upload_content::UploadContent;
 /// 临时图片目录。
 const TEMP_PATH: &str = "./temp";
 
+#[derive(Debug)]
 pub struct Answer {
-    client: Client,
-    model_name: String,
-    server_url: String,
-    is_vision_model: bool,
-    max_image_count: usize,
-    api_key: String,
-    builtin: bool,
-    use_ollama: bool,
-    system_prompt: String,
-    tiny_lang_jaccard: Option<TinyLangJaccard>,
+    pub(crate) client: Client,
+    pub(crate) model_name: String,
+    pub(crate) server_url: String,
+    pub(crate) is_vision_model: bool,
+    pub(crate) max_image_count: usize,
+    pub(crate) api_key: String,
+    pub(crate) builtin: bool,
+    pub(crate) use_ollama: bool,
+    pub(crate) system_prompt: String,
+    pub(crate) tiny_lang_jaccard: Option<TinyLangJaccard>,
     /// 对应 `Answer.TotalTokens`，累加历次请求的 token 用量。
     pub total_tokens: i64,
-}
 
+    pub(crate) max_tokens: u32,
+    pub(crate) enable_thinking: bool,
+}
+/// 一行摘要，方便日志里直接 `{answer}` 看到当前接的是哪个后端、什么参数。
+impl std::fmt::Display for Answer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let backend = if self.builtin {
+            "builtin"
+        } else if self.use_ollama {
+            "ollama"
+        } else {
+            "openai"
+        };
+        write!(
+            f,
+            "Answer(backend={backend}, model={}, max_tokens={}, thinking={}, vision={}, total_tokens={})",
+            self.model_name,
+            self.max_tokens,
+            self.enable_thinking,
+            self.is_vision_model,
+            self.total_tokens
+        )
+    }
+}
 impl Answer {
     /// 对应 `Answer()` 构造函数。
     pub fn new() -> Self {
@@ -78,12 +102,13 @@ impl Answer {
             system_prompt: settings.system_prompt.clone(),
             tiny_lang_jaccard: None,
             total_tokens: 0,
+            max_tokens: settings.max_tokens,
+            enable_thinking: settings.enable_thinking,
         }
     }
 
-    /// 对应 C# 的终结器：正常退出时清掉临时目录（非空时删不掉，与 C# 行为一致）。
     fn cleanup_temp(&self) {
-        let _ = fs::remove_dir(TEMP_PATH);
+        let _ = fs::remove_dir_all(TEMP_PATH);
     }
 
     /// 对应 `Answer.GetAnswer(text)`，系统提示词取配置里的 `system.txt`。
@@ -128,9 +153,13 @@ impl Answer {
         request_body.insert("model".into(), json!(self.model_name));
         request_body.insert("messages".into(), Value::Array(messages));
         request_body.insert("stream".into(), json!(false));
-        for (key, value) in extra {
-            request_body.insert(key.clone(), value.clone());
-        }
+        apply_generation_options(
+            &mut request_body,
+            self.use_ollama,
+            self.max_tokens,
+            self.enable_thinking,
+        );
+        merge_extra(&mut request_body, extra);
 
         let body = serde_json::to_string(&request_body).unwrap_or_default();
         if let Ok(pretty) = serde_json::to_string_pretty(&request_body) {
@@ -393,6 +422,48 @@ impl Drop for Answer {
     }
 }
 
+/// 把"是否思考 / 最大 token"写进请求体。
+///
+/// 两种协议的字段形状不一样：
+/// * Ollama `/api/chat` 用平级的 `think` 布尔值，不认 `max_tokens`；
+/// * OpenAI 兼容接口用 `think.thinking.type`，并接受 `max_tokens`。
+///
+/// 抽成自由函数是为了能脱离 HTTP 直接测（见下方 `generation_options_*`）。
+fn apply_generation_options(
+    body: &mut Map<String, Value>,
+    use_ollama: bool,
+    max_tokens: u32,
+    enable_thinking: bool,
+) {
+    if use_ollama {
+        body.insert("think".into(), json!(enable_thinking));
+    } else {
+        body.insert("max_tokens".into(), json!(max_tokens));
+        body.insert(
+            "think".into(),
+            json!({ "thinking": { "type": if enable_thinking { "enabled" } else { "disabled" } } }),
+        );
+    }
+}
+
+/// 把 `extra.json` 的顶层键合并进请求体。
+///
+/// 放在 [`apply_generation_options`] 之后调用，所以用户可以用 `extra.json`
+/// 覆盖 `max_tokens` / `think` 这些字段（与 C# 版的合并顺序一致）。
+///
+/// 值写成 `null` 表示**把这个字段整个去掉**，而不是发一个 JSON `null`。
+/// 有些服务商不认 `think` / `max_tokens` 这类字段，发过去就直接报错，
+/// 这时在 `extra.json` 里写 `{"think": null}` 即可。
+fn merge_extra(body: &mut Map<String, Value>, extra: &Map<String, Value>) {
+    for (key, value) in extra {
+        if value.is_null() {
+            body.remove(key);
+        } else {
+            body.insert(key.clone(), value.clone());
+        }
+    }
+}
+
 /// 按扩展名推断 MIME 类型（与 C# 版的分支完全一致，兜底是 `image/jpeg`）。
 fn mime_of(path: &str) -> &'static str {
     let lower = path.to_lowercase();
@@ -508,4 +579,148 @@ fn save_base64_image(base64_string: &str, file_path: &str) -> Option<()> {
 fn md5_hex(input: &str) -> String {
     let digest = Md5::new().chain_update(input.as_bytes()).finalize();
     digest.iter().map(|byte| format!("{byte:02x}")).collect()
+}
+#[cfg(test)]
+mod tests {
+    use std::env;
+
+    use super::*;
+
+    fn body_of(use_ollama: bool, max_tokens: u32, enable_thinking: bool) -> Map<String, Value> {
+        let mut body = Map::new();
+        apply_generation_options(&mut body, use_ollama, max_tokens, enable_thinking);
+        body
+    }
+
+    /// Ollama 认的是平级的 `think` 布尔值，而且不接受 `max_tokens`。
+    #[test]
+    fn ollama_gets_a_plain_think_flag() {
+        let body = body_of(true, 4096, true);
+        assert_eq!(body.get("think"), Some(&json!(true)));
+        assert!(
+            !body.contains_key("max_tokens"),
+            "Ollama 分支不应该塞 max_tokens: {body:?}"
+        );
+
+        let body = body_of(true, 4096, false);
+        assert_eq!(body.get("think"), Some(&json!(false)));
+    }
+
+    /// OpenAI 兼容接口要 `max_tokens`，思考开关是嵌一层的 `think.thinking.type`。
+    #[test]
+    fn openai_gets_max_tokens_and_a_thinking_object() {
+        let thinking_of = |body: &Map<String, Value>| {
+            body.get("think")
+                .and_then(|think| think.pointer("/thinking/type"))
+                .and_then(Value::as_str)
+                .map(str::to_owned)
+        };
+
+        let body = body_of(false, 4096, true);
+        assert_eq!(body.get("max_tokens"), Some(&json!(4096)));
+        assert_eq!(thinking_of(&body).as_deref(), Some("enabled"));
+
+        let body = body_of(false, 4096, false);
+        assert_eq!(thinking_of(&body).as_deref(), Some("disabled"));
+    }
+
+    /// `extra.json` 是在生成参数之后合并的，所以能覆盖它们。
+    #[test]
+    fn extra_json_overrides_generation_options() {
+        let mut body = body_of(false, 4096, true);
+        let extra: Map<String, Value> = json!({ "max_tokens": 999, "top_p": 0.9 })
+            .as_object()
+            .unwrap()
+            .clone();
+
+        merge_extra(&mut body, &extra);
+
+        assert_eq!(body.get("max_tokens"), Some(&json!(999)));
+        assert_eq!(body.get("top_p"), Some(&json!(0.9)));
+    }
+
+    /// 值写成 `null` 表示"这条参数不要发"。
+    ///
+    /// 有些服务商不认 `think` 这种字段，发过去会直接报错，
+    /// 这时在 `extra.json` 里写 `{"think": null}` 就能把它摘掉。
+    #[test]
+    fn extra_json_null_removes_a_field() {
+        let mut body = body_of(false, 4096, true);
+        assert!(body.contains_key("think"), "前提：默认是会带 think 的");
+
+        let extra: Map<String, Value> = json!({ "think": null }).as_object().unwrap().clone();
+        merge_extra(&mut body, &extra);
+
+        assert!(!body.contains_key("think"), "null 应该把字段删掉: {body:?}");
+        assert_eq!(
+            body.get("max_tokens"),
+            Some(&json!(4096)),
+            "其它字段不该受影响"
+        );
+    }
+
+    /// `Display` 要能安全地打出后端/参数摘要（这里只是别 panic）。
+    #[test]
+    fn display_summarizes_the_backend() {
+        let settings = Answer::new();
+        let text = settings.to_string();
+        assert!(text.starts_with("Answer(backend="), "{text}");
+        assert!(text.contains("max_tokens="), "{text}");
+    }
+
+    /// 真机联调用的探针：会真的发一次 HTTP 请求，所以默认忽略。
+    ///
+    /// ```powershell
+    /// $env:sfkey = "<你的 key>"
+    /// cargo test answer::tests::live_view -- --ignored --nocapture
+    /// ```
+    #[test]
+    #[ignore = "会真的发一次 HTTP 请求，需要 sfkey 环境变量"]
+    fn live_view() {
+        let mut answer = Answer::new();
+        answer.server_url = String::from("https://api.siliconflow.cn/v1");
+        answer.api_key = env::var("sfkey").expect("需要设置 sfkey 环境变量");
+        answer.enable_thinking = false;
+        answer.max_tokens = 11;
+        answer.model_name = String::from("Qwen/Qwen3-8B");
+        answer.builtin = false;
+        println!("{answer}");
+
+        let chat = ChatContent::new("", vec![], "text", "time", false);
+        let _ = answer.get_answer(&[chat]);
+    }
+
+    /// 看真实服务商到底收到了什么请求体。
+    ///
+    /// `Answer` 会在发请求**之前**把请求体落盘成 `dest.json`，所以就算没有
+    /// API key（请求必然失败）也能看到实际发出去的字段：
+    ///
+    /// ```powershell
+    /// cargo test answer::tests::view2 -- --ignored --nocapture
+    /// ```
+    ///
+    /// 注意它会真的往服务商发一次请求（也会等 `remote_server_timeout`），
+    /// 所以默认忽略，别放进 `cargo test` 的常规路径里。
+    #[test]
+    #[ignore = "会真的发一次 HTTP 请求，只用于手动看 dest.json"]
+    fn view2() {
+        let mut answer = Answer::new();
+        answer.server_url = String::from("https://api.siliconflow.cn/v1");
+        answer.enable_thinking = false;
+        answer.max_tokens = 11;
+        answer.model_name = String::from("Qwen/Qwen3-8B");
+        answer.builtin = false;
+        println!("{answer}");
+
+        let chat = ChatContent::new("", vec![], "text", "time", false);
+        // 没有 api key，请求必然失败；但 dest.json 已经写好了
+        let _ = answer.get_answer(&[chat]);
+
+        let dest = std::fs::read_to_string("dest.json").expect("没有写出 dest.json");
+        println!("{dest}");
+
+        let body: Value = serde_json::from_str(&dest).expect("dest.json 不是合法 JSON");
+        assert_eq!(body.get("model"), Some(&json!("Qwen/Qwen3-8B")));
+        assert_eq!(body.get("max_tokens"), Some(&json!(11)));
+    }
 }

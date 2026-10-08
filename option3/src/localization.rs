@@ -2,7 +2,7 @@
 //!
 //! 与 qqpilot5 的 `localization.rs` 同一套用法（`load()` / `get()`），
 //! 额外加了一个 [`text`]，因为 native-windows-gui 的 `text:` 属性是编译期常量，
-//! 只能吃 `&'static str`，而翻译是运行期从 `localization.json` 读的。
+//! 只能吃 `&'static str`，而翻译是运行期从 `<语言>.json` 读的。
 
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
@@ -10,24 +10,43 @@ use std::sync::{Mutex, OnceLock};
 use serde_json::Value::{self};
 type Translation = Value;
 
-const DATA1: &str = r#"{}"#;
-fn locale() -> String {
-    let current_locale: String = current_locale::current_locale().unwrap_or(String::from("zh-CN"));
-    current_locale
-}
-/// 读取 `localization.json`。
-pub(crate) fn load() -> Translation {
-    let current_locale = locale();
-    let data;
-    if !std::path::Path::new(&format!("{}.json", current_locale)).exists() {
-        data = std::fs::read_to_string("zh-CN.json").unwrap_or_default();
-    } else {
-        data = std::fs::read_to_string(format!("{}.json", current_locale)).unwrap_or_default();
-    }
+/// 支持的语言。**第一项是兜底语言**，任何找不到的文案都从这里取。
+pub(crate) const LOCALES: [&str; 2] = ["zh-CN", "en-US"];
+const FALLBACK_LOCALE: &str = "zh-CN";
 
-    let v: Translation =
-        serde_json::from_str(&data).unwrap_or(serde_json::from_str(DATA1).unwrap());
-    v
+/// 当前系统语言对应的翻译。
+///
+/// 系统语言不在 [`LOCALES`] 里时返回兜底语言，所以调用方拿到的永远是受支持的 key。
+pub(crate) fn locale() -> &'static str {
+    let current = current_locale::current_locale().unwrap_or_default();
+    LOCALES
+        .iter()
+        .copied()
+        .find(|name| name.eq_ignore_ascii_case(&current))
+        .unwrap_or(FALLBACK_LOCALE)
+}
+
+/// 读某个语言的翻译文件。
+///
+/// 文件缺失、内容为空、或者顶层不是对象，都返回 `None` —— 这样"建了个空文件占位"
+/// 也会正确地回退到兜底语言，而不是让整份界面变成 `X<key>`。
+fn read_locale(name: &str) -> Option<Translation> {
+    let data = std::fs::read_to_string(format!("{name}.json")).ok()?;
+    match serde_json::from_str::<Translation>(&data) {
+        Ok(Value::Object(map)) if !map.is_empty() => Some(Value::Object(map)),
+        _ => None,
+    }
+}
+
+/// 按 `当前语言 -> 兜底语言` 的顺序加载。
+pub(crate) fn load() -> Translation {
+    load_for(locale())
+}
+
+fn load_for(name: &str) -> Translation {
+    read_locale(name)
+        .or_else(|| read_locale(FALLBACK_LOCALE))
+        .unwrap_or_else(|| serde_json::from_str(r#"{}"#).unwrap())
 }
 
 /// 取一条翻译。找不到时提示并返回 `X<key>`，方便一眼看出漏了哪条。
@@ -62,10 +81,23 @@ mod tests {
 
     use super::*;
 
-    /// 全部翻译键。这个测试会把它们写进 `localization.json`，
-    /// 所以它是键集合的唯一来源：新增文案时改这里，再跑一次测试即可生成文件。
-    #[test]
-    pub fn default_cfg() {
+    /// 几个测试共用同一批 locale 文件，而 `fs::write` 会先截断再写，
+    /// 并发跑就会读到写了一半的内容，所以用锁串起来。
+    static FILE_LOCK: Mutex<()> = Mutex::new(());
+
+    fn lock() -> std::sync::MutexGuard<'static, ()> {
+        FILE_LOCK.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    /// 中文翻译表，也就是键集合的唯一来源。
+    ///
+    /// 新增文案时改这张表，再跑一次测试即可生成 `zh-CN.json`。
+    /// 注意这里写死的目标是 `zh-CN.json`（兜底语言），不能跟着开发机的系统语言跑，
+    /// 否则在英文机器上会把中文写进 `en-US.json`。
+    ///
+    /// 这是不带锁的裸版本：`Mutex` 不可重入，加锁交给 [`with_default_cfg`]
+    /// 和下面那个 `default_cfg` 测试，这里再拿一次会死锁。
+    fn write_default_cfg() {
         let json = json!({
             // --- 窗口 / 按钮 ---
             "option.title": "设置",
@@ -84,6 +116,7 @@ mod tests {
             "option.max.image.hint": "(本地模型解析>1张图片时速度极慢)",
             "option.model.name": "模型名称",
             "option.vision.model": "视觉模型",
+            "option.enable.thinking": "开启思考",
             "option.api.key": "API Key",
             "option.server": "服务器",
             "option.force.ollama": "强制使用OllamaAPI",
@@ -95,6 +128,7 @@ mod tests {
             "option.at.detect": "只检查 @",
             "option.sleep": "发送完消息后等待 (秒):",
             "option.timeout": "远程服务器超时 (秒):",
+            "option.max.tokens": "最大 token 数:",
             "option.tab.times": "tab按下次数",
             "option.system.text": "提示文本",
 
@@ -111,18 +145,24 @@ mod tests {
             "error.ui.build": "构建界面失败"
         });
 
-        std::fs::write(format!("{}.json",locale()), json.to_string()).unwrap();
+        std::fs::write("zh-CN.json", json.to_string()).unwrap();
     }
 
-    /// 生成 translation 表并跑一段断言。
+    /// 把中文表写出来（这是生成 `zh-CN.json` 的入口）。
+    #[test]
+    pub fn default_cfg() {
+        let _guard = lock();
+        write_default_cfg();
+    }
+
+    /// 生成中文表并跑一段断言。
     ///
-    /// 几个测试共用 `localization.json` 这一个文件，而 `fs::write` 会先截断再写，
-    /// 并发跑就会读到写了一半的内容，所以这里用锁串起来。
+    /// 交给闭包的是**兜底语言**的表，而不是 `load()`：`load()` 会跟着开发机的
+    /// 系统语言走，断言具体文案的测试在英文机器上就会挂。
     fn with_default_cfg<T>(f: impl FnOnce(&Translation) -> T) -> T {
-        static LOCK: Mutex<()> = Mutex::new(());
-        let _guard = LOCK.lock().unwrap_or_else(|e| e.into_inner());
-        default_cfg();
-        f(&load())
+        let _guard = lock();
+        write_default_cfg();
+        f(&load_for(FALLBACK_LOCALE))
     }
 
     #[test]
@@ -142,9 +182,84 @@ mod tests {
         with_default_cfg(|_| {
             let first = text("option.title");
             let second = text("option.title");
-            assert_eq!(first, "设置");
+            // 值跟着当前系统语言走，但绝不能是缺翻译的兜底值
+            assert_ne!(first, "Xoption.title");
+            assert_eq!(first, get(&load(), "option.title"));
             // 同一个 key 复用同一块内存，不会反复泄漏
             assert!(std::ptr::eq(first, second));
         });
+    }
+
+    /// 每个受支持语言的文件都要存在，而且键集合必须和兜底语言完全一致 ——
+    /// 少一条就会在界面上显示成 `X<key>`，多一条则说明漏了代码引用。
+    #[test]
+    fn every_locale_has_the_same_keys() {
+        let _guard = lock();
+        write_default_cfg();
+
+        let reference: Vec<String> = match read_locale(FALLBACK_LOCALE) {
+            Some(Value::Object(map)) => map.keys().cloned().collect(),
+            other => panic!("{FALLBACK_LOCALE}.json 不可用: {other:?}"),
+        };
+        assert!(!reference.is_empty(), "兜底语言表是空的");
+
+        for name in LOCALES {
+            let Some(Value::Object(map)) = read_locale(name) else {
+                panic!("缺少 {name}.json（或它是空的）");
+            };
+            let keys: Vec<String> = map.keys().cloned().collect();
+
+            let missing: Vec<&String> = reference.iter().filter(|k| !keys.contains(k)).collect();
+            let extra: Vec<&String> = keys.iter().filter(|k| !reference.contains(k)).collect();
+            assert!(missing.is_empty(), "{name}.json 少了这些键: {missing:?}");
+            assert!(extra.is_empty(), "{name}.json 多了这些键: {extra:?}");
+        }
+    }
+
+    /// 系统语言没被支持（或对应文件是空的）时，必须回退到兜底语言，
+    /// 而不是返回一张空表让整份界面变成 `X<key>`。
+    #[test]
+    fn unsupported_locale_falls_back() {
+        let _guard = lock();
+        write_default_cfg();
+        let translate = load_for("xx-XX");
+        assert_eq!(get(&translate, "option.title"), "设置");
+    }
+
+    /// 空文件（建了占位但还没翻译）同样要回退，不能当成"这个语言没有文案"。
+    #[test]
+    fn empty_locale_file_falls_back() {
+        let _guard = lock();
+        write_default_cfg();
+        std::fs::write("yy-YY.json", "").unwrap();
+        let translate = load_for("yy-YY");
+        let _ = std::fs::remove_file("yy-YY.json");
+        assert_eq!(get(&translate, "option.title"), "设置");
+    }
+
+    /// `locale()` 必须落在支持列表里，否则拼出来的文件名读不到东西。
+    #[test]
+    fn locale_is_always_supported() {
+        assert!(LOCALES.contains(&locale()));
+    }
+
+    /// `load()` 要按当前系统语言给出完整的表。
+    ///
+    /// 不管最后落到哪个语言，都不能出现 `get` 的兜底值 `X<key>` ——
+    /// 那正是"机器语言没有对应文件"时会看到的症状。
+    #[test]
+    fn load_serves_a_complete_table_for_the_current_locale() {
+        let _guard = lock();
+        write_default_cfg();
+        let translate = load();
+
+        for key in ["option.title", "option.save", "error.ui.init"] {
+            assert_ne!(
+                get(&translate, key),
+                format!("X{key}"),
+                "当前语言 {} 的表里缺 {key}",
+                locale()
+            );
+        }
     }
 }
