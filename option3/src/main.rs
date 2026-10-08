@@ -1,18 +1,3 @@
-//! QQPilot 设置界面（`QQPilotGUISharp` 的 Rust 移植版）。
-//!
-//! 控件、坐标、尺寸全部照搬 C# 的 `Form1.Designer.cs`，行为照搬 `Form1.cs`：
-//! 启动时读 config.ini / system.txt / tokencount.txt 填充界面，
-//! 点「保存设置」或关闭窗口时写回。
-//!
-//! AntdUI 控件到 native-windows-gui 的对应关系：
-//!   * `Input`        -> `TextInput`（多行用 `TextBox`）
-//!   * `InputNumber`  -> `TextInput` + `ES_NUMBER`（上下限在读写时夹紧）
-//!   * `Switch`       -> `CheckBox`
-//!   * `Select`       -> `ComboBox`
-//!   * `Slider`       -> `TrackBar`（数值显示在左侧的标签里）
-//!   * `ButtonShadow` -> `Button`
-//!   * `Tooltip`      -> 普通 `Label`（NWG 没有可点击的常显提示控件）
-
 mod config;
 mod localization;
 
@@ -28,10 +13,10 @@ use winapi::um::winuser::{
 
 use config::{NUL_STR, Settings};
 
-/// 对应 C# 的 `Form1.ClientSize`。
 const CLIENT_WIDTH: u32 = 1075;
-const CLIENT_HEIGHT: u32 = 489;
-/// 对应 `Form1_Load` 里的右下角留白。
+const CLIENT_HEIGHT: u32 = 500;
+
+
 const MARGIN_RIGHT: i32 = 20;
 const MARGIN_BOTTOM: i32 = 50;
 
@@ -63,14 +48,14 @@ pub struct SettingsApp {
     #[nwg_control(text: "", size: (449, 22), position: (86, 7))]
     vname: nwg::Label,
 
-    #[nwg_control(text: localization::text("option.user.name"), size: (70, 22), position: (9, 33))]
+    #[nwg_control(text: localization::text("option.user.name"), size: (70, 22), position: (11, 33))]
     label_user_name: nwg::Label,
 
-    #[nwg_control(size: (218, 36), position: (83, 26))]
+    #[nwg_control(size: (218, 30), position: (83, 26))]
     #[nwg_events(OnTextInput: [SettingsApp::guard_empty_text])]
     user_name: nwg::TextInput,
 
-    #[nwg_control(text: localization::text("option.user.name.hint"), size: (168, 38), position: (304, 24))]
+    #[nwg_control(text: localization::text("option.user.name.hint"), size: (190, 38), position: (304, 25))]
     label_user_name_hint: nwg::Label,
 
     // ---- 窗口尺寸 / token 计数 ----
@@ -86,13 +71,13 @@ pub struct SettingsApp {
     #[nwg_control(size: (84, 34), position: (248, 59), flags: "VISIBLE|TAB_STOP|NUMBER")]
     win_height: nwg::TextInput,
 
-    #[nwg_control(text: localization::text("option.token.count"), size: (70, 22), position: (355, 66), h_align: nwg::HTextAlign::Center)]
+    #[nwg_control(text: localization::text("option.token.count"), size: (90, 22), position: (335, 66), h_align: nwg::HTextAlign::Center)]
     label_token_count: nwg::Label,
 
     #[nwg_control(text: "0", size: (59, 22), position: (432, 66))]
     token_count: nwg::Label,
 
-    #[nwg_control(text: localization::text("option.reset.token"), size: (111, 32), position: (416, 93))]
+    #[nwg_control(text: localization::text("option.reset.token"), size: (120, 32), position: (420, 93))]
     #[nwg_events(OnButtonClick: [SettingsApp::reset_token_count])]
     button_reset_token: nwg::Button,
 
@@ -104,8 +89,8 @@ pub struct SettingsApp {
     #[nwg_events(OnTextInput: [SettingsApp::on_max_image_count_changed])]
     max_image_count: nwg::TextInput,
 
-    #[nwg_control(text: localization::text("option.max.image.hint"), size: (227, 38), position: (174, 93))]
-    label_max_image_hint: nwg::Label,
+    // #[nwg_control(text: localization::text("option.max.image.hint"), size: (250, 38), position: (174,92))]
+    // label_max_image_hint: nwg::Label,
 
     // ---- 模型 / 接口 ----
     #[nwg_control(text: localization::text("option.model.name"), size: (70, 22), position: (11, 139))]
@@ -115,10 +100,8 @@ pub struct SettingsApp {
     #[nwg_events(OnTextInput: [SettingsApp::guard_empty_text])]
     model_name: nwg::TextInput,
 
-    #[nwg_control(text: localization::text("option.vision.model"), size: (70, 22), position: (11, 176))]
-    label_vision_model: nwg::Label,
 
-    #[nwg_control(text: "", size: (78, 33), position: (86, 170), flags: "VISIBLE|TAB_STOP")]
+    #[nwg_control(text: localization::text("option.vision.model"), size: (90, 33), position: (11, 170), flags: "VISIBLE|TAB_STOP")]
     is_vision_model: nwg::CheckBox,
 
     #[nwg_control(text: localization::text("option.api.key"), size: (70, 22), position: (11, 215))]
@@ -139,14 +122,14 @@ pub struct SettingsApp {
     #[nwg_control(size: (343, 36), position: (200, 254))]
     server_url: nwg::TextInput,
 
-    #[nwg_control(text: localization::text("option.extra.json"), size: (111, 32), position: (200, 297))]
+    #[nwg_control(text: localization::text("option.extra.json"), size: (130, 32), position: (200, 297))]
     #[nwg_events(OnButtonClick: [SettingsApp::open_extra_json])]
     button_extra_json: nwg::Button,
 
-    #[nwg_control(text: localization::text("option.force.ollama"), size: (136, 22), position: (336, 302))]
-    label_force_ollama: nwg::Label,
+    // #[nwg_control(text: localization::text("option.force.ollama"), size: (2000  , 22), position: (336, 302))]
+    // label_force_ollama: nwg::Label,
 
-    #[nwg_control(text: "", size: (78, 33), position: (465, 297), flags: "VISIBLE|TAB_STOP")]
+    #[nwg_control(text: localization::text("option.force.ollama"), size: (200, 33), position: (336, 297), flags: "VISIBLE|TAB_STOP")]
     force_ollama_api: nwg::CheckBox,
 
     // ---- 交互节奏 ----
@@ -157,22 +140,16 @@ pub struct SettingsApp {
     #[nwg_events(OnTextInput: [SettingsApp::on_scroll_changed])]
     scroll: nwg::TextInput,
 
-    #[nwg_control(text: localization::text("option.with.image"), size: (70, 22), position: (11, 341))]
-    label_with_image: nwg::Label,
-
-    #[nwg_control(text: "", size: (78, 33), position: (86, 336), flags: "VISIBLE|TAB_STOP")]
+    #[nwg_control(text: localization::text("option.with.image"), size: (90, 33), position: (11, 330), flags: "VISIBLE|TAB_STOP")]
     with_image: nwg::CheckBox,
 
-    #[nwg_control(text: localization::text("option.auto.login"), size: (90, 22), position: (174, 341))]
-    label_auto_login: nwg::Label,
-
-    #[nwg_control(text: "", size: (78, 33), position: (254, 336), flags: "VISIBLE|TAB_STOP")]
+    #[nwg_control(text: localization::text("option.auto.login"), size: (150   , 33), position: (120, 330), flags: "VISIBLE|TAB_STOP")]
     auto_login: nwg::CheckBox,
 
-    #[nwg_control(text: localization::text("option.auto.focusing"), size: (136, 22), position: (336, 341))]
-    label_auto_focusing: nwg::Label,
+    // #[nwg_control(text: localization::text("option.auto.focusing"), size: (170, 22), position: (336, 341))]
+    // label_auto_focusing: nwg::Label,
 
-    #[nwg_control(text: "", size: (78, 33), position: (465, 336), flags: "VISIBLE|TAB_STOP")]
+    #[nwg_control(text: localization::text("option.auto.focusing"), size: (170, 33), position: (336, 330), flags: "VISIBLE|TAB_STOP")]
     auto_focusing: nwg::CheckBox,
 
     // ---- 发送图片概率 ----
@@ -184,20 +161,17 @@ pub struct SettingsApp {
     #[nwg_events(OnHorizontalScroll: [SettingsApp::on_possibility_changed])]
     send_image_possibility: nwg::TrackBar,
 
-    #[nwg_control(text: localization::text("option.at.detect"), size: (70, 22), position: (11, 413))]
-    label_at_detect: nwg::Label,
-
-    #[nwg_control(text: localization::text("option.sleep"), size: (180, 22), position: (200, 413)) ]
+    #[nwg_control(text: localization::text("option.sleep"), size: (180, 22), position: (200, 410)) ]
     label_sleep: nwg::Label,
 
-    #[nwg_control(text: "", size: (134, 22), position: (360, 413),flags: "VISIBLE|TAB_STOP|NUMBER")]
+    #[nwg_control(text: "", size: (134, 22), position: (360, 410),flags: "VISIBLE|TAB_STOP|NUMBER")]
     sleep: nwg::TextInput,
 
-    #[nwg_control(text: "", size: (78, 33), position: (86, 408), flags: "VISIBLE|TAB_STOP")]
+    #[nwg_control(text: localization::text("option.at.detect"), size: (130, 33), position: (11, 400), flags: "VISIBLE|TAB_STOP")]
     at_detect: nwg::CheckBox,
 
     // ---- 超时 / tab 次数 ----
-    #[nwg_control(text: localization::text("option.timeout"), size: (134, 22), position: (11, 446))]
+    #[nwg_control(text: localization::text("option.timeout"), size: (150, 22), position: (11, 446))]
     label_timeout: nwg::Label,
 
     #[nwg_control(size: (84, 34), position: (174, 439), flags: "VISIBLE|TAB_STOP|NUMBER")]
@@ -217,7 +191,7 @@ pub struct SettingsApp {
     #[nwg_control(size: (514, 439), position: (552, 39), flags: "VISIBLE|TAB_STOP|VSCROLL")]
     system_text: nwg::TextBox,
 
-    #[nwg_control(text: localization::text("option.save"), size: (145, 34), position: (916, 7))]
+    #[nwg_control(text: localization::text("option.save"), size: (145, 30), position: (916, 7))]
     #[nwg_events(OnButtonClick: [SettingsApp::save_config])]
     button_save: nwg::Button,
 }
@@ -557,6 +531,12 @@ fn main() {
     let _app = SettingsApp::build_ui(Default::default()).expect(ui_build_failed);
     nwg::dispatch_thread_events();
 }
+
+// impl  Drop for  SettingsApp  {
+//   fn drop(&mut self) { 
+//     self.save_config();
+//  }
+// }
 
 #[cfg(test)]
 mod tests {

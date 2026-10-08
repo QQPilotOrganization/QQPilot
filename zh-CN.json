@@ -83,7 +83,6 @@
     "option.window.height": "窗口高度",
     "option.token.count": "Token用量",
     "option.max.image.count": "解析图片数",
-    "option.max.image.hint": "(本地模型解析>1张图片时速度极慢)",
     "option.model.name": "模型名称",
     "option.vision.model": "视觉模型",
     "option.api.key": "API Key",
