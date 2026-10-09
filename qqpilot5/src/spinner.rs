@@ -8,6 +8,7 @@ use std::time::{Duration, Instant};
 
 use crate::localization;
 use crate::log::{self, Color};
+use crate::windows8::windows8;
 
 const FRAMES: [&str; 10] = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
@@ -36,7 +37,12 @@ pub fn start(color: Color, text: &str) {
         while !flag.load(Ordering::Relaxed) {
             let frame = FRAMES[index % FRAMES.len()];
             log::set_color(color);
-            let line = format!("{frame} {text}\x1b[0m");
+            let line;
+            if windows8() {
+                line = format!("{text}\x1b[0m")
+            } else {
+                line = format!("{frame} {text}\x1b[0m");
+            }
             log::reset();
 
             clear_line();

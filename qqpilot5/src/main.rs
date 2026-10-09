@@ -4,7 +4,6 @@
 #![recursion_limit = "256"]
 
 mod answer;
-mod arrow_load;
 mod chat_content;
 mod clipboard;
 mod config;
@@ -35,6 +34,7 @@ use upload_content::UploadContent;
 use windows_version::OsVersion;
 
 use crate::sleep::ms_output;
+use crate::windows8::windows8;
 
 /// 自动聚焦线程是否继续运行。
 static AUTO_FOCUS_SHOULD_RUN: AtomicBool = AtomicBool::new(true);
@@ -49,6 +49,7 @@ unsafe extern "system" fn console_ctrl_handler(_ctrl_type: u32) -> i32 {
 
 mod localization;
 mod sleep;
+mod windows8;
 fn main() {
     let translate = localization::load();
 
@@ -56,9 +57,12 @@ fn main() {
     // sleep::ms_output(20000);
     // return;
 
-    let version_windows = OsVersion::current();
-    println!("{}", version_windows.major);
-    if version_windows.major > 8 {
+    // let version_windows = OsVersion::current();
+    // println!("{}", version_windows.major);
+    // if version_windows.major > 8 {
+    //     log::enable_utf8_output();
+    // }
+    if windows8() {
         log::enable_utf8_output();
     }
 
@@ -71,11 +75,7 @@ fn main() {
         }
     };
 
-    arrow_load::start_loading(
-        Color::Green,
-        &localization::get(&translate, "default.loading"),
-    );
-
+    log::print(localization::get(&translate, "default.loading"));
     if let Some(child) = scale_process.as_mut() {
         let _ = child.wait();
     }
@@ -106,7 +106,7 @@ fn main() {
         localization::get(&translate, "program.name"),
         settings.version
     ));
-    arrow_load::stop_loading();
+    // arrow_load::stop_loading();
     log::reset();
 
     log::print(localization::get(&translate, "default.loading.success"));
