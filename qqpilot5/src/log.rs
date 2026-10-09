@@ -91,11 +91,11 @@ pub fn set_color(color: Color) {
     apply(attributes);
 }
 
-/// 对应 `Console.BackgroundColor = color`。
-pub fn set_background_color(color: Color) {
-    let attributes = original_attributes() & 0xFF0F | ((color as u16) << 4);
-    apply(attributes);
-}
+// /// 对应 `Console.BackgroundColor = color`。
+// pub fn set_background_color(color: Color) {
+//     let attributes = original_attributes() & 0xFF0F | ((color as u16) << 4);
+//     apply(attributes);
+// }
 
 /// 对应 `Console.ResetColor()`。
 pub fn reset() {

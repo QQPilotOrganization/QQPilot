@@ -19,14 +19,12 @@ pub const TOKEN_FILE: &str = "tokencount.txt";
 /// config.ini 里 `[general]` 节的名字。
 const SECTION: &str = "general";
 /// 对应 C# 的 `NULSTr`：文本框内容为空时用它占位，避免写出空值。
-pub const NUL_STR: &str = "_";
+pub const NULLSTR: &str = "_";
 
 /// `max_tokens` 的默认值。
 pub const MAX_TOKENS_DEFAULT: u32 = 100_000;
-/// `max_tokens` 允许的下限（太小模型就说不完一句话）。
-pub const MAX_TOKENS_MIN: u32 = 4;
-/// `max_tokens` 允许的上限（防止手滑写成天文数字把服务打爆）。
-pub const MAX_TOKENS_MAX: u32 = 1_048_576;
+pub const MAX_TOKENS_MINIMUM: u32 = 4;
+pub const MAX_TOKENS_MAXIMUM: u32 = 1_048_576;
 
 /// 界面上可编辑的全部配置项。
 ///
@@ -145,7 +143,7 @@ impl Settings {
             // 另外原来写的是 .min(0)，会让 sleep 永远是 0（配置里的 20 存不进去）。
             sleep: get_i32("sleep", d.sleep as i32).max(0) as u32,
             max_tokens: get_u32("max_tokens", MAX_TOKENS_DEFAULT)
-                .clamp(MAX_TOKENS_MIN, MAX_TOKENS_MAX),
+                .clamp(MAX_TOKENS_MINIMUM, MAX_TOKENS_MAXIMUM),
             enable_thinking: get_bool("enable_thinking", true),
         }
     }
@@ -204,7 +202,7 @@ impl Settings {
             (
                 "max_tokens",
                 self.max_tokens
-                    .clamp(MAX_TOKENS_MIN, MAX_TOKENS_MAX)
+                    .clamp(MAX_TOKENS_MINIMUM, MAX_TOKENS_MAXIMUM)
                     .to_string(),
             ),
             ("enable_thinking", bool_text(self.enable_thinking)),
@@ -395,13 +393,13 @@ mod tests {
         assert_eq!(load_with("[general]\n"), MAX_TOKENS_DEFAULT);
         assert_eq!(
             load_with("[general]\nmax_tokens = 1\n"),
-            MAX_TOKENS_MIN,
+            MAX_TOKENS_MINIMUM,
             "低于下限要抬到下限"
         );
         assert_eq!(load_with("[general]\nmax_tokens = 8192\n"), 8192);
         assert_eq!(
             load_with("[general]\nmax_tokens = 99999999\n"),
-            MAX_TOKENS_MAX,
+            MAX_TOKENS_MAXIMUM,
             "高于上限要压到上限"
         );
         // 写不回去的数字（负数 / 溢出）当缺失处理

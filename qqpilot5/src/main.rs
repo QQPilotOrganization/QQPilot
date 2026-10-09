@@ -31,7 +31,7 @@ use answer::Answer;
 use log::Color;
 use positions::{PointI, RectI};
 use upload_content::UploadContent;
-use windows_version::OsVersion;
+// use windows_version::OsVersion;
 
 use crate::sleep::ms_output;
 use crate::windows8::windows8;
@@ -41,7 +41,7 @@ static AUTO_FOCUS_SHOULD_RUN: AtomicBool = AtomicBool::new(true);
 /// Ctrl+C 置位，主循环据此收尾退出。
 static CANCELLED: AtomicBool = AtomicBool::new(false);
 
-/// 对应 `Console.CancelKeyPress` 的处理：置位后由主循环收尾。
+/// Ctrl+C
 unsafe extern "system" fn console_ctrl_handler(_ctrl_type: u32) -> i32 {
     CANCELLED.store(true, Ordering::SeqCst);
     1
