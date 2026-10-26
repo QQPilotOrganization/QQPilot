@@ -485,8 +485,17 @@ impl SettingsApp {
     fn connect_test(&self) {
         let translate = localization::load();
         let t = |key: &str| localization::get(&translate, key);
-
+        let probe = self.current_probe();
         let owner = handle_of(&self.window.handle);
+        if probe.endpoint().is_none() {
+            message_box(
+                owner,
+                &t("option.testconnect.builtin"),
+                &t("option.run_connect_test"),
+                MB_OK | MB_ICONINFORMATION,
+            );
+            return;
+        }
         if message_box(
             owner,
             &t("option.warning.testconnect.consume"),
@@ -497,16 +506,7 @@ impl SettingsApp {
             return;
         }
 
-        let probe = self.current_probe();
-        if probe.endpoint().is_none() {
-            message_box(
-                owner,
-                &t("option.testconnect.builtin"),
-                &t("option.run_connect_test"),
-                MB_OK | MB_ICONINFORMATION,
-            );
-            return;
-        }
+
 
         let button = handle_of(&self.button_run_test.handle);
         self.button_run_test
