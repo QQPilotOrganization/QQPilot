@@ -32,7 +32,7 @@
 
 [不同平台的版本差异](documentation/diff.md)
 
-[TinyLangJaccard](documentation/TinyLangJaccardReadme.md)
+[内置模型](documentation/TinyLangJaccardReadme.md)
 
 [开发者](documentation/compile.md)
 
