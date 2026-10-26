@@ -33,6 +33,9 @@
 [不同平台的版本差异](documentation/diff.md)
 
 [TinyLangJaccard](documentation/TinyLangJaccardReadme.md)
+
+[开发者](documentation/compile.md)
+
 ## 🛡️ 免责声明
 
 本软件 **仅限技术学习与研究用途**，严禁用于：
@@ -41,6 +44,8 @@
 - 任何违法违规场景
 
 使用者须自行承担因使用本软件引发的一切法律责任，作者概不负责。
+
+如遇问题，欢迎提交 Issue。
 
 本项目采用 [MIT License](LICENSE)
 
