@@ -1,16 +1,22 @@
 //! 图片上传（对应 C# 的 `upload.cs` + `Upload2.cs`）。
 
 use std::process::Command;
+
 use std::thread;
 use std::time::Duration;
 
+use anyhow::Result;
+
+use crate::cached_point::CachedPoint;
 use crate::gui_operation;
 use crate::localization;
 use crate::log;
 use crate::native;
 use crate::positions::RectI;
 use crate::vision;
-
+use std::sync::{OnceLock, Mutex};
+// static UPLOAD_POINTS_CACHE: OnceLock<CachedPoint> = OnceLock::new();
+static UPLOAD_POINTS_CACHE: OnceLock<Mutex<CachedPoint>> = OnceLock::new();
 /// 对应 `Upload.upload()`：从 `./Images` 随机挑一张图上传。
 pub fn upload() -> i32 {
     native::upload_file().upload()
@@ -21,17 +27,27 @@ pub fn escape() {
     native::upload_file().escape();
 }
 
-/// 对应 `Upload2.UploadImage`：先找上传按钮，找不到就退回 `uploadImage2.exe`。
+/// 先找上传按钮，找不到就退回 `uploadImage2.exe`。
 pub fn upload_image(upload_image_possible_actual_size: RectI) {
+    let cache = UPLOAD_POINTS_CACHE
+        .get_or_init(|| Mutex::new(CachedPoint::new_expired()));
+    let mut guard = cache.lock().unwrap();
     let translate = localization::load();
     vision::screenshot(upload_image_possible_actual_size);
     thread::sleep(Duration::from_millis(2000));
 
     let failure = localization::get(&translate, "error.matchtemplate.failed");
-    let found =
-        vision::find_templates(vision::SCREENSHOT_FILE, "uploadImage.png", 30, 1).expect(&failure);
+
+    let found = match guard.consume() {
+        Ok(point) => vec![point],
+        Err(_) =>  vision::find_templates(vision::SCREENSHOT_FILE, "uploadImage.png", 30, 1)
+        .expect(&failure),
+    };
+
+   
 
     if found.is_empty() {
+        guard.expiry();
         log::print(failure);
         let _ = Command::new("uploadImage2.exe").status();
         thread::sleep(Duration::from_millis(200));
@@ -45,6 +61,7 @@ pub fn upload_image(upload_image_possible_actual_size: RectI) {
         thread::sleep(Duration::from_millis(4000));
         upload();
     }
+
     thread::sleep(Duration::from_millis(4000));
 }
 
@@ -56,7 +73,8 @@ pub fn upload_selected_image(upload_image_possible_actual_size: RectI, file: &st
 
     let failure = localization::get(&translate, "error.matchtemplate.failed");
     let found =
-        vision::find_templates(vision::SCREENSHOT_FILE, "uploadImage.png", 30, 1).expect(&failure);
+        vision::find_templates(vision::SCREENSHOT_FILE, "uploadImage.png", 30, 1)
+            .expect(&failure);
 
     if found.is_empty() {
         log::print(failure);
@@ -72,5 +90,6 @@ pub fn upload_selected_image(upload_image_possible_actual_size: RectI, file: &st
         thread::sleep(Duration::from_millis(4000));
         native::upload_file().upload_selected_image(file);
     }
+
     thread::sleep(Duration::from_millis(4000));
 }

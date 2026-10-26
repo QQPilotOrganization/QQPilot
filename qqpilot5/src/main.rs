@@ -35,6 +35,7 @@ use positions::{PointI, RectI};
 use upload_content::UploadContent;
 // use windows_version::OsVersion;
 
+use crate::cached_point::CachedPoint;
 use crate::sleep::ms_output;
 use crate::windows8::windows8;
 
@@ -52,6 +53,9 @@ unsafe extern "system" fn console_ctrl_handler(_ctrl_type: u32) -> i32 {
 mod localization;
 mod sleep;
 mod windows8;
+
+use anyhow::Result;
+mod cached_point;
 fn main() {
     let translate = localization::load();
 
@@ -88,8 +92,7 @@ fn main() {
     // `--parent` 只是兜底：万一 Job 没生效，浮窗也会盯着本进程自己退出。
     let overlay = job_guard::JobGuard::create_and_assign(
         &job_guard::resolve_program("InfoRunning2.exe"),
-        &[]
-        // &["--parent", &std::process::id().to_string()],
+        &[], // &["--parent", &std::process::id().to_string()],
     );
     let _overlay_guard = match overlay {
         Ok(guard) => Some(guard),
@@ -211,12 +214,11 @@ fn main() {
     let copy_button_possible =
         positions::to_actual_size(positions::COPY_BUTTON_POSSIBLE_BBOX_RELATIVE_SIZE, size);
 
-    
     // SAFETY: 传入的是本文件里 'static 的合法处理函数。
     unsafe { SetConsoleCtrlHandler(Some(console_ctrl_handler), 1) };
 
     let mut answer_model: Option<Answer> = None;
-
+    let mut copy_points_cache = CachedPoint::new_expired();
     while !CANCELLED.load(Ordering::Relaxed) {
         print!(
             "{}\r",
@@ -226,11 +228,11 @@ fn main() {
 
         let mut contain = if settings.at_detect {
             // vision::screenshot(at_place);
-            vision::screenshot((0,0,at_place.2,at_place.3));
+            vision::screenshot((0, 0, at_place.2, at_place.3));
             // panic!();
             vision::contains_red_dot(vision::rect(at_place))
         } else {
-            vision::screenshot((0,0,chat_list.2,chat_list.3));
+            vision::screenshot((0, 0, chat_list.2, chat_list.3));
             vision::contains_red_dot(vision::rect(chat_list))
         };
 
@@ -272,14 +274,18 @@ fn main() {
         sleep::ms(1000);
         clipboard::set_text("");
 
-        let copy_points = vision::find_templates(vision::SCREENSHOT_FILE, "./copy.png", 30, 1)
+        let copy_points:Vec<(u32,u32)>=match copy_points_cache.consume() {
+            Ok(point) => vec![point],
+            Err(_) => {vision::find_templates(vision::SCREENSHOT_FILE, "./copy.png", 30, 1)
             .unwrap_or_else(|_| {
                 panic!(
                     "{}",
                     localization::get(&translate, "error.matchtemplate.failed")
                 )
-            });
+            })},
+        };
         if copy_points.is_empty() {
+            copy_points_cache.expiry();
             log::print(localization::get(&translate, "error.matchtemplate.failed"));
             for _ in 0..(settings.scroll * 2) {
                 sleep::ms(400);
@@ -295,6 +301,7 @@ fn main() {
             gui_operation::press_key("enter");
             sleep::ms(200);
         } else {
+            copy_points_cache.update(copy_points[0]);
             sleep::ms(800);
             gui_operation::click(
                 (copy_points[0].0 + copy_button_possible.0 as u32) as i32,
@@ -428,7 +435,7 @@ fn main() {
     let _ = auto_focus_thread.join();
 }
 
-/// 对应 `Program.UploadImageWithoutSend`：从 exe 目录下的 `Images` 里挑一张图上传。
+/// 从 exe 目录下的 `Images` 里挑一张图上传。
 fn upload_image_without_send(upload_image_possible: RectI) {
     let translate = localization::load();
     let image_dir = std::env::current_exe()

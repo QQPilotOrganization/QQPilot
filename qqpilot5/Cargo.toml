@@ -28,6 +28,7 @@ windows-sys = { version = "0.61", features = [
 ] }
 windows-version = "0.1.7"
 current_locale = "0.1.1"
+anyhow = "1.0.104"
 
 
 
