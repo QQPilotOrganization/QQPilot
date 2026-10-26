@@ -47,7 +47,7 @@
 
 如遇问题，欢迎提交 Issue。
 
-本项目采用 [MIT License](LICENSE)
+本项目采用 [The Unlicense](LICENSE)
 
 
 
