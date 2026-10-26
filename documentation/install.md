@@ -1,8 +1,16 @@
 ## 安装
 
-### ⚠️ 使用限制
+### ⚠️ 使用限制 / 提示
 
-- 需图形界面，不支持服务器/远程桌面无头模式 
+- 需图形界面，不支持服务器/远程桌面无头模式
+
+
+- 使用时会**占用鼠标和键盘**，推荐试用后，使用旧的计算机部署。
+- 如果只有一台计算机，并且还希望在运行时使用别的程序，推荐:
+> - [VirtualDesktopRDP](https://github.com/Na2Cr2O7/VirtualDesktopRDP) 基于RDP的虚拟桌面。无需虚拟机，低占用。
+>  - [虚拟机](../InstallVM/readme.md) 适用于性能较好的计算机。
+
+
 - 对 **屏幕分辨率** 和 **DPI 缩放比例** 敏感（推荐设置为 **100% ~ 175%**）  
 - QQ 主窗口必须 **可见且未最小化**（不可被其他窗口遮挡）
 
@@ -32,7 +40,7 @@ QQPilot只支持Ollama API 或者Chat Completion API。
 ollama pull qwen3.5:9b
 
 # 低配设备可选（1B，轻量快速）
-ollama pull minicpm-v4.6:1b
+ollama pull minicpm-v4.7:1b
 ```
 
 * 可以在虚拟机上使用宿主机的Ollama，详情见[教程](../useollamainVM/useOllamainVM.md)

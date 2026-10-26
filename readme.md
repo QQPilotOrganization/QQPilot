@@ -20,9 +20,11 @@
 
 ## 核心优势
 
-- **安全**：纯视觉操作，零注入、零 Hook，几乎无封号风险  
+- **极致安全**：纯视觉操作，零注入、零 Hook，几乎无封号风险，不会自动掉线
+- **部署简单**: 直连AI API提供商和内置模型，无需[Astrbot](https://astrbot.app/)等Agent就可以正常使用。
+- **端侧模型兼容**: 没有任何工具调用和上下文注入，图片输入可选，最早可支持`qwen:0.5b`。
 - **隐私**：支持完全本地运行，数据不出设备  
-- **灵活**：可对接任意Open AI API本地大模型（如 Ollama）或远程 HTTP API  
+- **灵活**：可对接任意Open AI API本地大模型（如 Ollama / Llama.cpp）或远程 HTTP API  
 
 [安装](documentation/install.md)
 
@@ -35,6 +37,8 @@
 [内置模型](documentation/TinyLangJaccardReadme.md)
 
 [开发者](documentation/compile.md)
+
+[插件](documentation/ext.md)
 
 ## 🛡️ 免责声明
 
