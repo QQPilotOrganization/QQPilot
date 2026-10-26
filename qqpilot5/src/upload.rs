@@ -5,7 +5,6 @@ use std::process::Command;
 use std::thread;
 use std::time::Duration;
 
-use anyhow::Result;
 
 use crate::cached_point::CachedPoint;
 use crate::gui_operation;
