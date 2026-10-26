@@ -196,12 +196,19 @@ mod tests {
     "error.overlay.launch": "启动运行浮窗失败",
     "error.ui.init": "初始化界面失败",
     "error.ui.build": "构建界面失败",
-    "option.warning.testconnect.consume":"向填写的服务器发送一次请求，会消耗token,是否继续?",
-    "option.testconnect.success.title":"连接成功",
-    "option.run_connect_test":"连通性测试"
+    "option.warning.testconnect.consume": "向填写的服务器发送一次请求，会消耗token，是否继续？",
+    "option.testconnect.success.title": "连接成功",
+    "option.testconnect.failed.title": "连接失败",
+    "option.testconnect.builtin": "当前是内置模型（不联网），不需要测试连接。",
+    "option.testconnect.url": "地址",
+    "option.testconnect.reply": "答复",
+    "option.testconnect.timeout": "请求超时",
+    "option.testconnect.notjson": "响应不是合法的 JSON（地址可能不是 API 根路径）",
+    "option.run_connect_test":"连通性测试",
+    "option.testconnect.testing": "测试中…"
 }"#,
         )
-        .unwrap();
+        .expect("不是合法的json");
         std::fs::write("zh-CN.json", value.to_string()).unwrap();
     }
 
@@ -228,7 +235,12 @@ mod tests {
             assert_eq!(get(translate, "default.loading"), "正在初始化");
         });
     }
-
+    #[test]
+    #[should_panic(expected = "invalid_json")] 
+    fn invalid_json()
+    {
+        let _: serde_json::Value = serde_json::from_str(r#"{"sdadasds":"22231321233",,m}"#).expect("invalid_json");
+    }
     #[test]
     pub fn test_default() {
         with_default_cfg(|translate| {

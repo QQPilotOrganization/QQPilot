@@ -100,7 +100,6 @@ mod tests {
     "option.extra.json": "请求的额外参数",
     "option.run_connect_test": "连通性测试",
     "option.testconnect.testing": "测试中…",
-
     "option.version": "版本",
     "option.user.name": "用户名",
     "option.user.name.hint": "用于判断是否是自身消息",

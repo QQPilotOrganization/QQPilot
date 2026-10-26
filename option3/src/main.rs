@@ -132,7 +132,7 @@ pub struct SettingsApp {
     #[nwg_control(text: localization::text("option.api.key"), size: (70, 20), position: (11, 215))]
     label_api_key: nwg::Label,
 
-    #[nwg_control(size: (350, 36), position: (84, 207), password: Some('·'))]
+    #[nwg_control(size: (350, 36), position: (84, 207))]
     #[nwg_events(OnTextInput: [SettingsApp::guard_empty_text])]
     api_key: nwg::TextInput,
 
@@ -150,6 +150,7 @@ pub struct SettingsApp {
     server_name: nwg::ComboBox<String>,
 
     #[nwg_control(size: (343, 36), position: (200, 254))]
+    #[nwg_events(OnTextInput: [SettingsApp::guard_empty_text])]
     server_url: nwg::TextInput,
 
     #[nwg_control(text: localization::text("option.extra.json"), size: (130, 32), position: (200, 297))]
@@ -401,7 +402,7 @@ impl SettingsApp {
     ///
     /// C# 是逐次按键触发的，这里保持同样时机。
     fn guard_empty_text(&self) {
-        for input in [&self.user_name, &self.model_name, &self.api_key] {
+        for input in [&self.user_name, &self.model_name, &self.api_key,&self.server_url] {
             if input.text().trim().is_empty() {
                 input.set_text(NULLSTR);
             }

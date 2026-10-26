@@ -19,7 +19,7 @@ pub const TOKEN_FILE: &str = "tokencount.txt";
 /// config.ini 里 `[general]` 节的名字。
 const SECTION: &str = "general";
 /// 对应 C# 的 `NULSTr`：文本框内容为空时用它占位，避免写出空值。
-pub const NULLSTR: &str = "_";
+pub const NULLSTR: &str = "None";
 
 /// 界面上可编辑的全部配置项。
 ///
