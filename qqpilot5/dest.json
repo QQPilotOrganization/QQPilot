@@ -1,0 +1,10 @@
+{
+  "model": "Qwen/Qwen3-8B",
+  "messages": [
+    {
+      "role": "user",
+      "content": "[time]\ntime \n\n [username] \n  \n\n [content] \n text\n"
+    }
+  ],
+  "stream": false
+}
