@@ -20,9 +20,6 @@
   <Project Path="InputEvent/InputEvent.vcxproj" Id="b59a5f55-dc63-4cae-aa81-a9c6219a174e">
     <BuildType Solution="release2|*" Project="Release" />
   </Project>
-  <Project Path="mfcinstall2/mfcinstall2.vcxproj">
-    <BuildType Solution="release2|*" Project="Release" />
-  </Project>
   <Project Path="MFCLauncher/MFCLauncher.vcxproj">
     <BuildType Solution="release2|*" Project="Release" />
   </Project>
