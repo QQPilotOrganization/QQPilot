@@ -24,4 +24,6 @@
 |内置模型|✅|✅||
 |MNN Chat|||✅|
 
+ - MNN Chat 本质也是Chat Completion接口。
+
 
