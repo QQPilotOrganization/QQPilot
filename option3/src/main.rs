@@ -114,7 +114,7 @@ pub struct SettingsApp {
     #[nwg_control(text: localization::text("option.server"), size: (70, 22), position: (11, 262))]
     label_server: nwg::Label,
 
-    #[nwg_control(size: (111, 36), position: (86, 254), flags: "VISIBLE|TAB_STOP",
+    #[nwg_control(size: (111, 90), position: (86, 254), flags: "VISIBLE|TAB_STOP",
                   collection: vec!["ollama".to_string(), localization::text("option.server.builtin").to_string(), localization::text("option.server.custom").to_string()])]
     #[nwg_events(OnComboxBoxSelection: [SettingsApp::on_server_changed])]
     server_name: nwg::ComboBox<String>,
