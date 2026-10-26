@@ -205,7 +205,8 @@ mod tests {
     "option.testconnect.timeout": "请求超时",
     "option.testconnect.notjson": "响应不是合法的 JSON（地址可能不是 API 根路径）",
     "option.run_connect_test":"连通性测试",
-    "option.testconnect.testing": "测试中…"
+    "option.testconnect.testing": "测试中…",
+    "option.max_output":"最大输出字数"
 }"#,
         )
         .expect("不是合法的json");

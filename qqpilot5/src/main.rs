@@ -343,8 +343,8 @@ fn main() {
             .unwrap_or_else(|| UploadContent::text_only(""));
         let mut result = results.text.clone().unwrap_or_default();
         let images_to_upload = results.absolute();
-        if result.chars().count() > 500 {
-            result = result.chars().take(500).collect();
+        if result.chars().count() > settings.max_output.into() {
+            result = result.chars().take(settings.max_output.into()).collect();
         }
 
         if model.total_tokens != 0 {

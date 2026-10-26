@@ -116,5 +116,9 @@
     "error.jobobjects.create": "Could not create the job object",
     "error.jobobjects.limit": "Could not set the job object limits",
     "error.jobobjects.subprocess.handle": "Could not open the child process handle",
-    "error.jobobjects.attach": "Could not assign the child process to the job object"
+    "error.jobobjects.attach": "Could not assign the child process to the job object",
+    "option.testconnect.testing":"Testing",
+    "option.testconnect.failed.title":"Error",
+    "option.testconnect.url":"URL",
+    "option.max_output":"Max output texts"
 }

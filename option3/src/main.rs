@@ -34,6 +34,8 @@ const WINDOW_WIDTH_MIN: i32 = 1280;
 const WINDOW_HEIGHT_MAX: i32 = 720;
 const TIMEOUT_MIN: i32 = 60;
 
+const MAX_OUTPUT_MAX: u16 = 500;
+
 /// 弹一个消息框；返回值与 Win32 一致（`IDOK` / `IDCANCEL` / …）。
 ///
 /// `owner` 是属主窗口的句柄数值，`0` 表示没有属主。用 `isize` 而不是 `HWND`，
@@ -112,7 +114,7 @@ pub struct SettingsApp {
     label_max_image_count: nwg::Label,
 
     #[nwg_control(size: (84, 34), position: (86, 97), flags: "VISIBLE|TAB_STOP|NUMBER")]
-    #[nwg_events(OnTextInput: [SettingsApp::on_max_image_count_changed])]
+    #[nwg_events(OnTextInput: [SettingsApp::max_image_count_changed])]
     max_image_count: nwg::TextInput,
 
     // #[nwg_control(text: localization::text("option.max.image.hint"), size: (250, 38), position: (174,92))]
@@ -167,7 +169,7 @@ pub struct SettingsApp {
     label_scroll: nwg::Label,
 
     #[nwg_control(size: (84, 34), position: (105, 294), flags: "VISIBLE|TAB_STOP|NUMBER")]
-    #[nwg_events(OnTextInput: [SettingsApp::on_scroll_changed])]
+    #[nwg_events(OnTextInput: [SettingsApp::scroll_changed])]
     scroll: nwg::TextInput,
 
     #[nwg_control(text: localization::text("option.with.image"), size: (90,30), position: (11,330), flags: "VISIBLE|TAB_STOP")]
@@ -190,7 +192,7 @@ pub struct SettingsApp {
 
     #[nwg_control(size: (424,30), position: (120, 373), range: Some(0..100), pos: Some(0),
                   flags: "VISIBLE|TAB_STOP|HORIZONTAL")]
-    #[nwg_events(OnHorizontalScroll: [SettingsApp::on_possibility_changed])]
+    #[nwg_events(OnHorizontalScroll: [SettingsApp::possibility_changed])]
     send_image_possibility: nwg::TrackBar,
 
     #[nwg_control(text: localization::text("option.sleep"), size: (180, 20), position: (200, 410)) ]
@@ -202,8 +204,16 @@ pub struct SettingsApp {
     #[nwg_control(text: localization::text("option.at.detect"), size: (130,30), position: (11, 400), flags: "VISIBLE|TAB_STOP")]
     at_detect: nwg::CheckBox,
 
+    
     #[nwg_control(text: localization::text("option.mouse.smooth"), size: (160,30), position: (11, 470), flags: "VISIBLE|TAB_STOP")]
     mouse_smooth_move: nwg::CheckBox,
+
+    #[nwg_control(text: localization::text("option.max_output"), size: (180, 20), position: (200, 480)) ]
+    label_max_output: nwg::Label,
+
+    #[nwg_control(text: "", size: (134, 18), position: (330, 480),flags: "VISIBLE|TAB_STOP|NUMBER")]
+    #[nwg_events(OnTextInput: [SettingsApp::max_output_changed])]
+    max_output: nwg::TextInput,
 
     // ---- 超时 / tab 次数 ----
     #[nwg_control(text: localization::text("option.timeout"), size: (150, 20), position: (11, 446))]
@@ -355,6 +365,7 @@ impl SettingsApp {
         self.sleep.set_text(&settings.sleep.to_string());
         self.mouse_smooth_move
             .set_check_state(check_state(settings.mouse_smooth_move));
+        self.max_output.set_text(&settings.max_output.to_string());
     }
 
     /// 对应 `Form1.SaveConfig`：把界面上的值攒成 [`Settings`] 并写回文件。
@@ -363,22 +374,21 @@ impl SettingsApp {
             version: self.vname.text(),
             name: self.user_name.text(),
             // Designer 里这几个 InputNumber 带上下限，这里在写盘时补上夹紧。
-            width: read_int(&self.win_width, Settings::default().width).max(WINDOW_WIDTH_MIN),
-            height: read_int(&self.win_height, Settings::default().height).min(WINDOW_HEIGHT_MAX),
-            max_image_count: read_int(&self.max_image_count, Settings::default().max_image_count)
+            width: read(&self.win_width, Settings::default().width).max(WINDOW_WIDTH_MIN),
+            height: read(&self.win_height, Settings::default().height).min(WINDOW_HEIGHT_MAX),
+            max_image_count: read(&self.max_image_count, Settings::default().max_image_count)
                 .clamp(MAX_IMAGE_MIN, MAX_IMAGE_MAX),
             model_name: self.model_name.text(),
             is_vision_model: self.is_vision_model.check_state() == nwg::CheckBoxState::Checked,
             api_key: self.api_key.text(),
             server_url: self.server_url.text(),
-            scroll: read_int(&self.scroll, Settings::default().scroll)
-                .clamp(SCROLL_MIN, SCROLL_MAX),
+            scroll: read(&self.scroll, Settings::default().scroll).clamp(SCROLL_MIN, SCROLL_MAX),
             with_image: self.with_image.check_state() == nwg::CheckBoxState::Checked,
             auto_login: self.auto_login.check_state() == nwg::CheckBoxState::Checked,
             auto_focusing: self.auto_focusing.check_state() == nwg::CheckBoxState::Checked,
             send_image_possibility: self.send_image_possibility.pos() as i32,
             at_detect: self.at_detect.check_state() == nwg::CheckBoxState::Checked,
-            remote_server_timeout: read_int(
+            remote_server_timeout: read(
                 &self.remote_server_timeout,
                 Settings::default().remote_server_timeout,
             )
@@ -390,8 +400,9 @@ impl SettingsApp {
             } else {
                 8
             },
-            sleep: read_uint(&self.sleep, 0),
+            sleep: read(&self.sleep, 0),
             mouse_smooth_move: self.mouse_smooth_move.check_state() == nwg::CheckBoxState::Checked,
+            max_output: read(&self.max_output, MAX_OUTPUT_MAX),
         };
 
         if let Err(e) = settings.save(&self.system_text.text()) {
@@ -402,7 +413,12 @@ impl SettingsApp {
     ///
     /// C# 是逐次按键触发的，这里保持同样时机。
     fn guard_empty_text(&self) {
-        for input in [&self.user_name, &self.model_name, &self.api_key,&self.server_url] {
+        for input in [
+            &self.user_name,
+            &self.model_name,
+            &self.api_key,
+            &self.server_url,
+        ] {
             if input.text().trim().is_empty() {
                 input.set_text(NULLSTR);
             }
@@ -410,17 +426,22 @@ impl SettingsApp {
     }
 
     /// 对应 `MaxImageCount_ValueChanged`：把值夹到 0..4。
-    fn on_max_image_count_changed(&self) {
-        clamp_text(&self.max_image_count, MAX_IMAGE_MIN, MAX_IMAGE_MAX);
+    fn max_image_count_changed(&self) {
+        clamp_input(&self.max_image_count, MAX_IMAGE_MIN, MAX_IMAGE_MAX);
     }
-
+    
     /// 对应 `Scroll_ValueChanged`：把值夹到 1..200。
-    fn on_scroll_changed(&self) {
-        clamp_text(&self.scroll, SCROLL_MIN, SCROLL_MAX);
+    fn scroll_changed(&self) {
+        clamp_input(&self.scroll, SCROLL_MIN, SCROLL_MAX);
+    }
+    fn max_output_changed(&self)
+    {
+        clamp_input(&self.max_output, 0, MAX_OUTPUT_MAX.into());
+
     }
 
     /// 对应 `SendImagePossibility` 的取值变化：把数值回显到左侧标签。
-    fn on_possibility_changed(&self) {
+    fn possibility_changed(&self) {
         self.refresh_possibility_label();
     }
 
@@ -507,8 +528,6 @@ impl SettingsApp {
             return;
         }
 
-
-
         let button = handle_of(&self.button_run_test.handle);
         self.button_run_test
             .set_text(&t("option.testconnect.testing"));
@@ -562,7 +581,7 @@ impl SettingsApp {
             model: self.model_name.text(),
             api_key,
             force_ollama_api: self.force_ollama_api.check_state() == nwg::CheckBoxState::Checked,
-            timeout_secs: read_int(
+            timeout_secs: read(
                 &self.remote_server_timeout,
                 Settings::default().remote_server_timeout,
             )
@@ -674,15 +693,17 @@ fn check_state(value: bool) -> nwg::CheckBoxState {
     }
 }
 
-/// 读取数字输入框；内容不是数字时回落到默认值（C# 里 AntdUI 会保证它始终是数字）。
-fn read_int(input: &nwg::TextInput, fallback: i32) -> i32 {
-    input.text().trim().parse::<i32>().unwrap_or(fallback)
+/// 读取数字输入框；内容不是数字时回落到默认值
+
+fn read<T>(input: &nwg::TextInput, fallback: T) -> T
+where
+    T: std::str::FromStr,
+{
+    input.text().trim().parse::<T>().unwrap_or(fallback)
 }
-fn read_uint(input: &nwg::TextInput, fallback: u32) -> u32 {
-    input.text().trim().parse::<u32>().unwrap_or(fallback)
-}
+
 /// 把输入框里的数字夹进范围；不是数字就原样留着，等用户继续输。
-fn clamp_text(input: &nwg::TextInput, min: i32, max: i32) {
+fn clamp_input(input: &nwg::TextInput, min: i32, max: i32) {
     let Ok(value) = input.text().trim().parse::<i32>() else {
         return;
     };

@@ -89,6 +89,7 @@ pub struct Config {
 
     pub sleep: u32,
     pub mouse_smooth_move: bool,
+    pub max_output:u16,
 }
 
 impl Default for Config {
@@ -118,6 +119,7 @@ impl Default for Config {
             extra: Map::new(),
             sleep: 0,
             mouse_smooth_move: false,
+            max_output:500,
         }
     }
 }
@@ -170,8 +172,9 @@ impl Config {
             force_ollama_api: get_bool(&ini, "forceollamaapi", d.force_ollama_api),
             system_prompt: load_system_prompt(SYSTEM_PROMPT_FILE),
             extra: load_extra(EXTRA_FILE),
-            sleep: get_uint(&ini, "sleep", 0),
+            sleep: get_u32(&ini, "sleep", 0),
             mouse_smooth_move: get_bool(&ini, "mouse_smooth_move", true),
+            max_output: get_u16(&ini, "max_output", 500).min(500).max(0),
         }
     }
 }
@@ -236,7 +239,7 @@ fn parse_or_warn<T: FromStr + Display>(key: &str, value: &str, default: T) -> T 
         }
     }
 }
-fn get_uint(ini: &Ini, key: &str, default: u32) -> u32 {
+fn get_u32(ini: &Ini, key: &str, default: u32) -> u32 {
     match raw(ini, key) {
         Some(v) => parse_or_warn(key, &v, default),
         None => {
@@ -245,7 +248,15 @@ fn get_uint(ini: &Ini, key: &str, default: u32) -> u32 {
         }
     }
 }
-
+fn get_u16(ini: &Ini, key: &str, default: u16) -> u16 {
+    match raw(ini, key) {
+        Some(v) => parse_or_warn(key, &v, default),
+        None => {
+            warn_missing(key, &default);
+            default
+        }
+    }
+}
 fn get_int(ini: &Ini, key: &str, default: i32) -> i32 {
     match raw(ini, key) {
         Some(v) => parse_or_warn(key, &v, default),

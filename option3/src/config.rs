@@ -49,6 +49,7 @@ pub struct Settings {
 
     pub sleep: u32,
     pub mouse_smooth_move: bool,
+    pub max_output: u16,
 }
 
 impl Default for Settings {
@@ -75,6 +76,7 @@ impl Default for Settings {
             tab_times: 8,
             sleep: 0,
             mouse_smooth_move: false,
+            max_output: 500,
         }
     }
 }
@@ -89,12 +91,19 @@ impl Settings {
         let mut ini = Ini::new();
         let _ = ini.load(path.as_ref());
         let d = Self::default();
-
-        // C# 用 `int.Parse` / `Equals("true", OrdinalIgnoreCase)`，这里保持同样的解析口味：
-        // 数字解析失败就用默认值，布尔只认 "true"（大小写不敏感）。
         let get_i32 = |key: &str, fallback: i32| {
             ini.get(SECTION, key)
                 .and_then(|v| v.trim().parse::<i32>().ok())
+                .unwrap_or(fallback)
+        };
+        let get_u32 = |key: &str, fallback: u32| {
+            ini.get(SECTION, key)
+                .and_then(|v| v.trim().parse::<u32>().ok())
+                .unwrap_or(fallback)
+        };
+        let get_u16 = |key: &str, fallback: u16| {
+            ini.get(SECTION, key)
+                .and_then(|v| v.trim().parse::<u16>().ok())
                 .unwrap_or(fallback)
         };
         let get_bool = |key: &str, fallback: bool| {
@@ -126,8 +135,9 @@ impl Settings {
             remote_server_timeout: get_i32("remote_server_timeout", d.remote_server_timeout),
             force_ollama_api: get_bool("forceollamaapi", d.force_ollama_api),
             tab_times: get_i32("tab_times", d.tab_times),
-            sleep: get_i32("sleep", d.sleep as i32).max(0) as u32,
+            sleep: get_u32("sleep", d.sleep).max(0),
             mouse_smooth_move: get_bool("mouse_smooth_move", d.mouse_smooth_move),
+            max_output: get_u16("max_output", 500).max(0).min(500),
         }
     }
 
@@ -156,7 +166,7 @@ impl Settings {
             ));
         }
 
-        let values: [(&str, String); 20] = [
+        let values: [(&str, String); 21] = [
             ("version", self.version.clone()),
             ("name", self.name.clone()),
             ("width", self.width.to_string()),
@@ -183,6 +193,7 @@ impl Settings {
             ("tab_times", self.tab_times.to_string()),
             ("sleep", self.sleep.to_string()),
             ("mouse_smooth_move", bool_text(self.mouse_smooth_move)),
+            ("max_output", self.max_output.to_string()),
         ];
         for (key, value) in values {
             ini.set(SECTION, key, Some(value));
