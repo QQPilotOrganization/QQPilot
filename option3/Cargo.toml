@@ -16,6 +16,14 @@ serde_json = { version = "1", features = ["preserve_order"] }
 # native-windows-gui 本身就依赖 winapi 0.3，不会多引入东西。
 winapi = { version = "0.3", features = ["winuser"] }
 current_locale = "0.1.1"
+# 连通性测试要发一次 HTTP 请求。特性与 qqpilot5 保持一致：native-tls 在 Windows
+# 上走 schannel，不需要 C / cmake 工具链；用默认特性会拉上 rustls + aws-lc-sys，
+# 那玩意儿要现场编译一堆 C，本机直接编不过。
+reqwest = { version = "0.13.5", default-features = false, features = [
+    "blocking",
+    "json",
+    "native-tls",
+] }
 
 
 

@@ -21,8 +21,6 @@ const SECTION: &str = "general";
 /// 对应 C# 的 `NULSTr`：文本框内容为空时用它占位，避免写出空值。
 pub const NULLSTR: &str = "_";
 
-
-
 /// 界面上可编辑的全部配置项。
 ///
 /// 字段严格对应 C# 版 `Form1_Load` 读取、`SaveConfig` 写回的那批键；
@@ -50,7 +48,7 @@ pub struct Settings {
     pub tab_times: i32,
 
     pub sleep: u32,
-    pub mouse_smooth_move:bool
+    pub mouse_smooth_move: bool,
 }
 
 impl Default for Settings {
@@ -76,7 +74,7 @@ impl Default for Settings {
             force_ollama_api: false,
             tab_times: 8,
             sleep: 0,
-            mouse_smooth_move:false
+            mouse_smooth_move: false,
         }
     }
 }
@@ -130,7 +128,6 @@ impl Settings {
             tab_times: get_i32("tab_times", d.tab_times),
             sleep: get_i32("sleep", d.sleep as i32).max(0) as u32,
             mouse_smooth_move: get_bool("mouse_smooth_move", d.mouse_smooth_move),
-
         }
     }
 
@@ -185,7 +182,7 @@ impl Settings {
             ("forceollamaapi", bool_text(self.force_ollama_api)),
             ("tab_times", self.tab_times.to_string()),
             ("sleep", self.sleep.to_string()),
-            ("mouse_smooth_move",bool_text(self.mouse_smooth_move))
+            ("mouse_smooth_move", bool_text(self.mouse_smooth_move)),
         ];
         for (key, value) in values {
             ini.set(SECTION, key, Some(value));
@@ -244,8 +241,15 @@ pub fn reset_token_count() -> Result<String, String> {
 mod tests {
     use super::*;
 
+    /// 测试用的临时目录。
+    ///
+    /// 放在 `target/test-tmp` 而不是 `%TEMP%`：本机对 `%TEMP%` 下新建目录会直接
+    /// `Access denied`（沙箱/杀软），而 `target` 一定可写，出了问题也好翻。
     fn temp_dir(name: &str) -> std::path::PathBuf {
-        let dir = std::env::temp_dir().join(name);
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("target")
+            .join("test-tmp")
+            .join(name);
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).expect("创建临时目录失败");
         dir
@@ -329,7 +333,4 @@ mod tests {
         let settings = Settings::load_from(dir.join("nope.ini"));
         assert_eq!(settings, Settings::default());
     }
-
-
-  
 }

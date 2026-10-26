@@ -97,8 +97,18 @@ mod tests {
 
     use super::*;
 
+    /// 测试数据放在 `target/test-tmp`：有的机器（沙箱 / 杀软）不让在 `%TEMP%`
+    /// 下新建文件，会直接 `Access denied`，而 `target` 一定可写。
+    fn temp_path(name: &str) -> PathBuf {
+        let dir = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("target")
+            .join("test-tmp");
+        fs::create_dir_all(&dir).expect("创建临时目录失败");
+        dir.join(name)
+    }
+
     fn write_dataset(name: &str, content: &str) -> PathBuf {
-        let path = std::env::temp_dir().join(name);
+        let path = temp_path(name);
         fs::write(&path, content).expect("写入临时数据集失败");
         path
     }
@@ -148,7 +158,7 @@ mod tests {
 
     #[test]
     fn missing_dataset_reports_the_path() {
-        let missing = std::env::temp_dir().join("qqpilot5-dataset-does-not-exist.json");
+        let missing = temp_path("qqpilot5-dataset-does-not-exist.json");
         let _ = fs::remove_file(&missing);
 
         let err = TinyLangJaccard::new(&dataset_str(&missing)).unwrap_err();

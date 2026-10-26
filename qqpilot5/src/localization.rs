@@ -75,6 +75,9 @@ mod tests {
     ///
     /// 因此它**不是**测试用例：加了 `#[test]` 就会绕过锁并发截断 `zh-CN.json`，
     /// 让其它用例读到空文件或半截 JSON 而随机失败。
+    ///
+    /// 要重新生成 `zh-CN.json`，跑 `cargo test localization::tests::default_cfg`
+    /// 就行（它拿着锁调这个函数），不必再临时加 `#[test]`。
     fn write_default_cfg() {
         let value: serde_json::Value = serde_json::from_str(
             r#"{
@@ -192,7 +195,10 @@ mod tests {
     "error.jobobjects.attach": "无法将子进程加入 Job 对象",
     "error.overlay.launch": "启动运行浮窗失败",
     "error.ui.init": "初始化界面失败",
-    "error.ui.build": "构建界面失败"
+    "error.ui.build": "构建界面失败",
+    "option.warning.testconnect.consume":"向填写的服务器发送一次请求，会消耗token,是否继续?",
+    "option.testconnect.success.title":"连接成功",
+    "option.run_connect_test":"连通性测试"
 }"#,
         )
         .unwrap();

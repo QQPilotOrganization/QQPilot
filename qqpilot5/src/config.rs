@@ -30,8 +30,6 @@ pub const EXTRA_FILE: &str = "extra.json";
 /// 系统提示词文件。
 pub const SYSTEM_PROMPT_FILE: &str = "system.txt";
 
-
-
 /// config.ini 里的节名。
 const SECTION: &str = "general";
 
@@ -90,7 +88,7 @@ pub struct Config {
     pub extra: Map<String, Value>,
 
     pub sleep: u32,
-    pub mouse_smooth_move:bool
+    pub mouse_smooth_move: bool,
 }
 
 impl Default for Config {
@@ -119,7 +117,7 @@ impl Default for Config {
             system_prompt: String::new(),
             extra: Map::new(),
             sleep: 0,
-            mouse_smooth_move:false
+            mouse_smooth_move: false,
         }
     }
 }
@@ -173,8 +171,7 @@ impl Config {
             system_prompt: load_system_prompt(SYSTEM_PROMPT_FILE),
             extra: load_extra(EXTRA_FILE),
             sleep: get_uint(&ini, "sleep", 0),
-            mouse_smooth_move:get_bool(&ini, "mouse_smooth_move", true)
-
+            mouse_smooth_move: get_bool(&ini, "mouse_smooth_move", true),
         }
     }
 }
@@ -328,8 +325,18 @@ mod tests {
     use super::*;
     use std::path::PathBuf;
 
+    /// 测试用的临时文件放在 `target/test-tmp`：有的机器（沙箱 / 杀软）不让在
+    /// `%TEMP%` 下新建文件，会直接 `Access denied`，而 `target` 一定可写。
+    fn temp_path(name: &str) -> PathBuf {
+        let dir = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("target")
+            .join("test-tmp");
+        fs::create_dir_all(&dir).expect("创建临时目录失败");
+        dir.join(name)
+    }
+
     fn write_temp(name: &str, content: &str) -> PathBuf {
-        let path = std::env::temp_dir().join(name);
+        let path = temp_path(name);
         fs::write(&path, content).expect("写入临时配置文件失败");
         path
     }
@@ -400,12 +407,6 @@ mod tests {
         assert_eq!(config.width, Config::default().width);
     }
 
-
-
-
-
-
-
     #[test]
     fn sleep_keeps_positive_values() {
         let path = write_temp("qqpilot5-config-sleep.ini", "[general]\nsleep = 20\n");
@@ -414,7 +415,7 @@ mod tests {
 
     #[test]
     fn missing_file_uses_all_defaults() {
-        let path = std::env::temp_dir().join("qqpilot5-config-does-not-exist.ini");
+        let path = temp_path("qqpilot5-config-does-not-exist.ini");
         let _ = fs::remove_file(&path);
         let config = Config::load(&path);
         assert_eq!(config.width, Config::default().width);

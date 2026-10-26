@@ -1,4 +1,5 @@
 mod config;
+mod connect_test;
 mod localization;
 
 use std::process::Command;
@@ -6,12 +7,15 @@ use std::process::Command;
 use native_windows_derive::NwgUi;
 use native_windows_gui as nwg;
 use nwg::NativeUi;
-use winapi::shared::windef::RECT;
+use winapi::shared::windef::{HWND, RECT};
 use winapi::um::winuser::{
-    CB_GETITEMHEIGHT, CB_SETITEMHEIGHT, GetClientRect, GetWindowRect, SendMessageW,
+    CB_GETITEMHEIGHT, CB_SETITEMHEIGHT, EnableWindow, GetClientRect, GetWindowRect, IDOK,
+    MB_ICONERROR, MB_ICONINFORMATION, MB_OK, MB_OKCANCEL, MessageBoxW, SendMessageW,
+    SetWindowTextW,
 };
 
 use config::{NULLSTR, Settings};
+use connect_test::{Failure, Outcome, Probe};
 
 const CLIENT_WIDTH: u32 = 1075;
 const CLIENT_HEIGHT: u32 = 500;
@@ -29,6 +33,29 @@ const MAX_IMAGE_MAX: i32 = 4;
 const WINDOW_WIDTH_MIN: i32 = 1280;
 const WINDOW_HEIGHT_MAX: i32 = 720;
 const TIMEOUT_MIN: i32 = 60;
+
+/// 弹一个消息框；返回值与 Win32 一致（`IDOK` / `IDCANCEL` / …）。
+///
+/// `owner` 是属主窗口的句柄数值，`0` 表示没有属主。用 `isize` 而不是 `HWND`，
+/// 是因为连通性测试要把它丢给后台线程：裸指针不是 `Send`，句柄数值是。
+///
+/// 文本必须自己补 `\0` —— `MessageBoxW` 不认识 Rust 的切片长度，只认结尾的 0。
+fn message_box(owner: isize, content: &str, title: &str, u_type: u32) -> i32 {
+    let content = wide(content);
+    let title = wide(title);
+    // SAFETY: 两个缓冲区都以 0 结尾；owner 是本进程窗口的句柄数值或空。
+    unsafe { MessageBoxW(owner as HWND, content.as_ptr(), title.as_ptr(), u_type) }
+}
+
+/// 转成 Win32 要的以 0 结尾的 UTF-16。
+fn wide(text: &str) -> Vec<u16> {
+    text.encode_utf16().chain(std::iter::once(0)).collect()
+}
+
+/// 取控件的裸句柄数值，拿不到就是 0（消息框会退化成没有属主）。
+fn handle_of(handle: &nwg::ControlHandle) -> isize {
+    handle.hwnd().map(|hwnd| hwnd as isize).unwrap_or(0)
+}
 
 #[derive(Default, NwgUi)]
 pub struct SettingsApp {
@@ -105,14 +132,19 @@ pub struct SettingsApp {
     #[nwg_control(text: localization::text("option.api.key"), size: (70, 20), position: (11, 215))]
     label_api_key: nwg::Label,
 
-    #[nwg_control(size: (459, 36), position: (84, 207), password: Some('·'))]
+    #[nwg_control(size: (350, 36), position: (84, 207), password: Some('·'))]
     #[nwg_events(OnTextInput: [SettingsApp::guard_empty_text])]
     api_key: nwg::TextInput,
+
+    // 「API Key」输入框右边空出来的这一块（434~552）就是给它的。
+    #[nwg_control(text: localization::text("option.run_connect_test"), size: (110, 36), position: (438, 207))]
+    #[nwg_events(OnButtonClick: [SettingsApp::connect_test])]
+    button_run_test: nwg::Button,
 
     #[nwg_control(text: localization::text("option.server"), size: (70, 20), position: (11, 262))]
     label_server: nwg::Label,
 
-    #[nwg_control(size: (111, 36), position: (86, 254), flags: "VISIBLE|TAB_STOP",
+    #[nwg_control(size: (111, 90), position: (86, 254), flags: "VISIBLE|TAB_STOP",
                   collection: vec!["ollama".to_string(), localization::text("option.server.builtin").to_string(), localization::text("option.server.custom").to_string()])]
     #[nwg_events(OnComboxBoxSelection: [SettingsApp::on_server_changed])]
     server_name: nwg::ComboBox<String>,
@@ -172,7 +204,6 @@ pub struct SettingsApp {
     #[nwg_control(text: localization::text("option.mouse.smooth"), size: (160,30), position: (11, 470), flags: "VISIBLE|TAB_STOP")]
     mouse_smooth_move: nwg::CheckBox,
 
-
     // ---- 超时 / tab 次数 ----
     #[nwg_control(text: localization::text("option.timeout"), size: (150, 20), position: (11, 446))]
     label_timeout: nwg::Label,
@@ -183,7 +214,7 @@ pub struct SettingsApp {
     #[nwg_control(text: localization::text("option.tab.times"), size: (134, 20), position: (290, 446))]
     label_tab_times: nwg::Label,
 
-    #[nwg_control(size: (111, 36), position: (433, 437), flags: "VISIBLE|TAB_STOP",
+    #[nwg_control(size: (111, 72), position: (433, 437), flags: "VISIBLE|TAB_STOP",
                   collection: vec!["7".to_string(), "8".to_string()])]
     tab_times: nwg::ComboBox<String>,
 
@@ -321,7 +352,8 @@ impl SettingsApp {
                 None => config::reset_token_count().unwrap_or_else(|_| "0".to_string()),
             });
         self.sleep.set_text(&settings.sleep.to_string());
-        self.mouse_smooth_move.set_check_state(check_state(settings.mouse_smooth_move));
+        self.mouse_smooth_move
+            .set_check_state(check_state(settings.mouse_smooth_move));
     }
 
     /// 对应 `Form1.SaveConfig`：把界面上的值攒成 [`Settings`] 并写回文件。
@@ -358,7 +390,7 @@ impl SettingsApp {
                 8
             },
             sleep: read_uint(&self.sleep, 0),
-            mouse_smooth_move:self.mouse_smooth_move.check_state()==nwg::CheckBoxState::Checked
+            mouse_smooth_move: self.mouse_smooth_move.check_state() == nwg::CheckBoxState::Checked,
         };
 
         if let Err(e) = settings.save(&self.system_text.text()) {
@@ -441,6 +473,143 @@ impl SettingsApp {
             );
         }
     }
+
+    /// 「连通性测试」：确认后按**界面当前**的参数真发一次最小请求。
+    ///
+    /// 用的是界面上的值而不是 `config.ini` 里的——用户往往是改完地址/模型就想点一下，
+    /// 这时候还没点「保存设置」。
+    ///
+    /// 请求放在后台线程里跑：超时最长可以到 `remote_server_timeout`（最少 60 秒），
+    /// 在 UI 线程上同步等会让窗口假死。测试期间按钮被禁用并显示「测试中…」，
+    /// 免得连点发出好几次请求。
+    fn connect_test(&self) {
+        let translate = localization::load();
+        let t = |key: &str| localization::get(&translate, key);
+
+        let owner = handle_of(&self.window.handle);
+        if message_box(
+            owner,
+            &t("option.warning.testconnect.consume"),
+            &t("option.run_connect_test"),
+            MB_OKCANCEL | MB_ICONINFORMATION,
+        ) != IDOK
+        {
+            return;
+        }
+
+        let probe = self.current_probe();
+        if probe.endpoint().is_none() {
+            message_box(
+                owner,
+                &t("option.testconnect.builtin"),
+                &t("option.run_connect_test"),
+                MB_OK | MB_ICONINFORMATION,
+            );
+            return;
+        }
+
+        let button = handle_of(&self.button_run_test.handle);
+        self.button_run_test
+            .set_text(&t("option.testconnect.testing"));
+        self.button_run_test.set_enabled(false);
+
+        std::thread::spawn(move || {
+            let result = connect_test::run(&probe);
+
+            // 翻译表在后台线程里重新载入一次：`Translation` 不是 `Send`。
+            let translate = localization::load();
+            let t = |key: &str| localization::get(&translate, key);
+            let (title, body, icon) = match &result {
+                Ok(outcome) => (
+                    t("option.testconnect.success.title"),
+                    describe_success(&t, &probe, outcome),
+                    MB_ICONINFORMATION,
+                ),
+                Err(failure) => (
+                    t("option.testconnect.failed.title"),
+                    describe_failure(&t, &probe, failure),
+                    MB_ICONERROR,
+                ),
+            };
+            message_box(owner, &body, &title, MB_OK | icon);
+
+            // 恢复按钮。窗口要是已经被关掉，这两下调用什么也不会发生。
+            if button != 0 {
+                let hwnd = button as HWND;
+                let label = wide(localization::text("option.run_connect_test"));
+                // SAFETY: 句柄来自本进程的按钮，label 以 0 结尾。
+                unsafe {
+                    SetWindowTextW(hwnd, label.as_ptr());
+                    EnableWindow(hwnd, 1);
+                }
+            }
+        });
+    }
+
+    /// 把界面上的值攒成一次测试请求的参数。
+    fn current_probe(&self) -> Probe {
+        // 空输入框会被 `guard_empty_text` 填成占位符 `_`，那不是真的 key。
+        let api_key = self.api_key.text();
+        let api_key = if api_key.trim() == NULLSTR {
+            String::new()
+        } else {
+            api_key
+        };
+
+        Probe {
+            server_url: self.server_url.text(),
+            model: self.model_name.text(),
+            api_key,
+            force_ollama_api: self.force_ollama_api.check_state() == nwg::CheckBoxState::Checked,
+            timeout_secs: read_int(
+                &self.remote_server_timeout,
+                Settings::default().remote_server_timeout,
+            )
+            .max(TIMEOUT_MIN) as u64,
+        }
+    }
+}
+
+/// 成功时给用户看的内容：打到哪儿、用的什么模型、多久、回了什么。
+fn describe_success(t: &impl Fn(&str) -> String, probe: &Probe, outcome: &Outcome) -> String {
+    let mut lines = vec![
+        format!(
+            "{}: {}",
+            t("option.testconnect.url"),
+            probe.endpoint().unwrap_or_default()
+        ),
+        format!("{}: {}", t("option.model.name"), probe.model),
+        format!(
+            "HTTP {} · {:.2}s",
+            outcome.status,
+            outcome.elapsed.as_secs_f64()
+        ),
+    ];
+    if let Some(reply) = &outcome.reply {
+        lines.push(format!("{}: {reply}", t("option.testconnect.reply")));
+    }
+    lines.join("\n")
+}
+
+/// 失败时给用户看的内容：打到哪儿 + 失败原因（尽量保留服务器原话）。
+fn describe_failure(t: &impl Fn(&str) -> String, probe: &Probe, failure: &Failure) -> String {
+    let reason = match failure {
+        Failure::NoEndpoint => t("option.testconnect.builtin"),
+        Failure::Timeout => format!(
+            "{} ({}s)",
+            t("option.testconnect.timeout"),
+            probe.timeout_secs
+        ),
+        Failure::Transport(error) => error.clone(),
+        Failure::Status { status, body } => format!("HTTP {status}\n{body}"),
+        Failure::ApiError(message) => message.clone(),
+        Failure::NotJson(body) => format!("{}\n{body}", t("option.testconnect.notjson")),
+    };
+    format!(
+        "{}: {}\n\n{reason}",
+        t("option.testconnect.url"),
+        probe.endpoint().unwrap_or_default()
+    )
 }
 
 /// 由下拉框选项推导出来的"自定义服务器"下标，对应 `ServerName.Items` 的第三项。
@@ -455,11 +624,16 @@ fn server_index(server_url: &str) -> usize {
     }
 }
 
-/// 把下拉框的整体高度调成指定值（逻辑像素）。
+/// 把下拉框的"显示区"调成指定高度（逻辑像素）。
 ///
-/// Win32 下拉框的显示区高度由字体决定，builder 里给的高度不会生效，
-/// 而 C# 那两个 `Select` 都是 36 高。`CB_SETITEMHEIGHT` 传 `wParam = -1`
-/// 只能设置"显示区"高度，总高度还要加上上下边框，所以这里先量出边框再补。
+/// Win32 下拉框的显示区高度由字体决定，builder 里给的高度不会生效，而 C# 那两个
+/// `Select` 都是 36 高。`CB_SETITEMHEIGHT` 传 `wParam = -1` 只能设置显示区高度，
+/// 总高度还要加上上下边框，所以这里先量出边框再补。
+///
+/// **别把 builder 里的尺寸改回一个显示区的高度**：`CBS_DROPDOWNLIST` 的窗口高度是
+/// "显示区 + 下拉列表区"，显示区撑到 36 之后剩下的才是列表区。只给 36 的话列表区
+/// 就剩 1 像素，点开只有一条缝（下拉菜单"坏了"就是这个原因）。所以那两个下拉框在
+/// builder 里故意写高了：90 = 36 + 3 行，72 = 36 + 2 行。
 fn fit_combo_height(combo: &nwg::ComboBox<String>, logical_height: i32) {
     let Some(hwnd) = combo.handle.hwnd() else {
         return;
@@ -487,7 +661,7 @@ fn fit_combo_height(combo: &nwg::ComboBox<String>, logical_height: i32) {
 
     // SAFETY: 同上。
     unsafe {
-        SendMessageW(hwnd, CB_SETITEMHEIGHT, usize::MAX, target - border);
+        SendMessageW(hwnd, CB_SETITEMHEIGHT, usize::MAX, (target - border).max(0));
     }
 }
 
@@ -549,6 +723,21 @@ fn main() {
 mod tests {
     use super::*;
 
+    /// 测试用的假翻译：直接回 `t:<key>`，这样断言只关心拼出来的形状。
+    fn fake_text(key: &str) -> String {
+        format!("t:{key}")
+    }
+
+    fn probe(url: &str) -> Probe {
+        Probe {
+            server_url: url.to_string(),
+            model: "qwen-test".to_string(),
+            api_key: String::new(),
+            force_ollama_api: false,
+            timeout_secs: 60,
+        }
+    }
+
     #[test]
     fn server_index_matches_csharp_switch() {
         assert_eq!(server_index("ollama"), 0);
@@ -558,6 +747,63 @@ mod tests {
         assert_eq!(
             server_index("http://192.168.1.100:8000/v1"),
             CUSTOM_SERVER_INDEX
+        );
+    }
+
+    /// 消息框的文本必须以 0 结尾，否则 `MessageBoxW` 会一直往后读。
+    #[test]
+    fn wide_appends_a_terminator() {
+        assert_eq!(wide("a"), vec![u16::from(b'a'), 0]);
+        assert_eq!(wide(""), vec![0]);
+    }
+
+    /// 成功时要把"打到哪儿/用的什么模型/多久/回了什么"都摆出来。
+    #[test]
+    fn success_message_shows_url_model_elapsed_and_reply() {
+        let outcome = Outcome {
+            status: 200,
+            elapsed: std::time::Duration::from_millis(1234),
+            reply: Some("pong".to_string()),
+        };
+        let text = describe_success(&fake_text, &probe("https://api.example.com/v1/"), &outcome);
+
+        assert!(
+            text.contains("https://api.example.com/v1/chat/completions"),
+            "{text}"
+        );
+        assert!(text.contains("qwen-test"), "{text}");
+        assert!(text.contains("HTTP 200"), "{text}");
+        assert!(text.contains("1.23s"), "{text}");
+        assert!(text.ends_with("pong"), "{text}");
+    }
+
+    /// 失败时不能只剩一句"失败"：地址和服务器原话都要留着，用户才知道该改哪儿。
+    #[test]
+    fn failure_message_keeps_the_url_and_the_server_reply() {
+        let text = describe_failure(
+            &fake_text,
+            &probe("https://api.example.com/v1"),
+            &Failure::Status {
+                status: 401,
+                body: "bad api key".to_string(),
+            },
+        );
+
+        assert!(
+            text.contains("https://api.example.com/v1/chat/completions"),
+            "{text}"
+        );
+        assert!(text.contains("HTTP 401"), "{text}");
+        assert!(text.contains("bad api key"), "{text}");
+    }
+
+    /// 超时要把等待上限说出来，否则用户不知道还要等多久。
+    #[test]
+    fn timeout_message_mentions_the_limit() {
+        let text = describe_failure(&fake_text, &probe("https://x/v1"), &Failure::Timeout);
+        assert_eq!(
+            text,
+            "t:option.testconnect.url: https://x/v1/chat/completions\n\nt:option.testconnect.timeout (60s)"
         );
     }
 }
