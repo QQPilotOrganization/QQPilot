@@ -135,9 +135,9 @@ impl Settings {
             remote_server_timeout: get_i32("remote_server_timeout", d.remote_server_timeout),
             force_ollama_api: get_bool("forceollamaapi", d.force_ollama_api),
             tab_times: get_i32("tab_times", d.tab_times),
-            sleep: get_u32("sleep", d.sleep).max(0),
+            sleep: get_u32("sleep", d.sleep),
             mouse_smooth_move: get_bool("mouse_smooth_move", d.mouse_smooth_move),
-            max_output: get_u16("max_output", 500).max(0).min(500),
+            max_output: get_u16("max_output", 500).min(500),
         }
     }
 
