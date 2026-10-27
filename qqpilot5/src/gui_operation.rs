@@ -142,9 +142,13 @@ pub fn tab() {
     press_key("TAB");
 }
 
-/// 对应 `GUIOperation.Focus_`。
+/// 目标窗口的标题。`Focus2.dll` 按标题认窗口，Sandboxie 里查到的是
+/// `[#] QQ [#]`，DLL 会把两种都算命中，所以这里只填原始标题。
+const QQ_WINDOW_NAME: &str = "QQ";
+
+/// 对应 `GUIOperation.Focus_`：把 QQ 窗口置顶/取消置顶并设成配置里的尺寸。
 pub fn focus() {
-    native::focus_qq_window().focus(config::get().auto_focusing);
+    native::focus_qq_window().focus(QQ_WINDOW_NAME, config::get().auto_focusing);
 }
 
 // --- 输入框 ---
@@ -188,7 +192,7 @@ mod tests {
     use crate::native;
     #[test]
     fn move_test() {
-        native::input_event().smooth_mouse_goto(100 ,100);
-        native::input_event().mouse_goto(50,800);
+        native::input_event().smooth_mouse_goto(100, 100);
+        native::input_event().mouse_goto(50, 800);
     }
 }

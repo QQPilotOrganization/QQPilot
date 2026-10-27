@@ -19,22 +19,19 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 bool fileExists(const wchar_t* fileName);
 //bool fileExists2(const wchar_t* fileName);
 static bool stringInString(const std::wstring& text, const std::wstring& search);
-static BOOL CALLBACK addToListIfIsQQ(HWND hwnd, LPARAM lparam);
-const std::wstring QQ = L"QQ";
+static BOOL CALLBACK addToListIfIsSelectedName(HWND hwnd, LPARAM lparam);
+std::wstring WindowName = L"QQ";
 std::vector<HWND> hwnds;
 
 using namespace inicpp;
 
-extern "C" int __declspec(dllexport) focus(bool alwaysOnTop)
+extern "C" int __declspec(dllexport) focus(wchar_t* windowName, bool alwaysOnTop)
 {
-
-    if (not fileExists(L"config.ini"))
+    WindowName = windowName;
+    if (WindowName == L"")
     {
-        std::cerr << "config.ini not exist\n";
-        return -1;
+        return 1;
     }
-
-    IniManager ini("config.ini");
     int width = 1280;
     int height = 720;
 
@@ -42,24 +39,31 @@ extern "C" int __declspec(dllexport) focus(bool alwaysOnTop)
     float scale = 1.0f;
     try
     {
-        width = ini["general"]["width"].get<int>();
-        height = ini["general"]["height"].get<int>();
-        scale = ini["general"]["scale"].get<float>();
-
+        if (fileExists(L"config.ini"))
+        {
+            IniManager ini("config.ini");
+            width = ini["general"]["width"].get<int>();
+            height = ini["general"]["height"].get<int>();
+            scale = ini["general"]["scale"].get<float>();
+        }
+        else
+        {
+            std::cerr << "config.ini not exist\n";
+        }
     }
     catch (const std::exception& e)
     {
         std::cerr << e.what() << std::endl;
     }
 
-    width *= scale;
-    height *= scale;
+    width = static_cast<int>(width * scale);
+    height *= static_cast<int>(scale);
 
     hwnds.reserve(4);
 
     //auto desktop = GetDesktopWindow();
 
-    EnumWindows(addToListIfIsQQ, NULL);
+    EnumWindows(addToListIfIsSelectedName, NULL);
 
     for (std::vector<HWND>::iterator phwnd = hwnds.begin(); phwnd < hwnds.end(); ++phwnd)
     {
@@ -96,7 +100,7 @@ extern "C" int __declspec(dllexport) focus(bool alwaysOnTop)
 }
 static bool correct(const std::wstring_view& text);
 
-static BOOL CALLBACK addToListIfIsQQ(HWND hwnd, LPARAM lparam)
+static BOOL CALLBACK addToListIfIsSelectedName(HWND hwnd, LPARAM lparam)
 {
     //wchar_t windowName[MAX_PATH]{};
     if (not IsWindowVisible(hwnd))
@@ -110,10 +114,6 @@ static BOOL CALLBACK addToListIfIsQQ(HWND hwnd, LPARAM lparam)
     length = GetWindowText(hwnd, windowName.get(), MAX_PATH);
     if (not length) return true;
 
-    //if (stringInString(std::wstring(windowName.get(), length), QQ))
-    //{
-    //    hwnds.push_back(hwnd);
-    //}
 
     if (correct(std::wstring_view(windowName.get(), length)))
     {
@@ -127,8 +127,8 @@ static bool stringInString(const std::wstring& text, const std::wstring& search)
 }
 static bool correct(const std::wstring_view& text)
 {
-    const std::wstring correct2 = L"[#] QQ [#]"; //Sandboxie沙盒的QQ
-    return (text == correct2 or text == QQ);
+    std::wstring correct2 = L"[#] "+WindowName+L" [#]"; //Sandboxie沙盒的程序
+    return (text == correct2 or text == WindowName);
 
 }
 bool fileExists(const wchar_t* fileName)

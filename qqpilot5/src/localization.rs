@@ -237,10 +237,10 @@ mod tests {
         });
     }
     #[test]
-    #[should_panic(expected = "invalid_json")] 
-    fn invalid_json()
-    {
-        let _: serde_json::Value = serde_json::from_str(r#"{"sdadasds":"22231321233",,m}"#).expect("invalid_json");
+    #[should_panic(expected = "invalid_json")]
+    fn invalid_json() {
+        let _: serde_json::Value =
+            serde_json::from_str(r#"{"sdadasds":"22231321233",,m}"#).expect("invalid_json");
     }
     #[test]
     pub fn test_default() {

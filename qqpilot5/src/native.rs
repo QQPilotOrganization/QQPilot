@@ -9,7 +9,7 @@
 //!   * `Vision/dllmain.h` + `Vision/dllmain.cpp`
 //!   * `ScreenCapture/dllmain.cpp`
 //!   * `uploadFile/dllmain.cpp`
-//!   * `FocusQQWindow2/dllmain.cpp`
+//!   * `Focus2/dllmain.cpp`
 
 use std::path::PathBuf;
 use std::sync::OnceLock;
@@ -117,7 +117,7 @@ pub struct InputEvent {
     mouse_down: SimpleActionFn,
     mouse_up: SimpleActionFn,
     dpi_awareness: DpiAwarenessFn,
-    mouse_goto:MouseGotoFn,
+    mouse_goto: MouseGotoFn,
     /// 必须最后析构：上面的函数指针都指向这块库的代码段。
     _lib: Library,
 }
@@ -137,7 +137,7 @@ impl InputEvent {
                 mouse_down: load_fn(&lib, "InputEvent.dll", "LmouseDown")?,
                 mouse_up: load_fn(&lib, "InputEvent.dll", "LmouseUp")?,
                 dpi_awareness: load_fn(&lib, "InputEvent.dll", "DPIAwarenessPrologue")?,
-                mouse_goto:load_fn(&lib, "InputEvent.dll", "Mousegoto")?,
+                mouse_goto: load_fn(&lib, "InputEvent.dll", "Mousegoto")?,
                 _lib: lib,
             })
         }
@@ -148,8 +148,8 @@ impl InputEvent {
         // SAFETY: 函数指针在构造时已解析，签名与 C 侧一致。
         unsafe { (self.smooth_mouse_goto)(x, y) }
     }
-    
-   pub fn mouse_goto(&self, x: u32, y: u32) -> bool {
+
+    pub fn mouse_goto(&self, x: u32, y: u32) -> bool {
         // SAFETY: 函数指针在构造时已解析，签名与 C 侧一致。
         unsafe { (self.mouse_goto)(x, y) }
     }
@@ -429,11 +429,12 @@ impl UploadFile {
     }
 }
 
-// --- FocusQQWindow2.dll ---
+// --- Focus2.dll ---
 
-type FocusFn = unsafe extern "C" fn(bool) -> i32;
+/// C 侧：`int focus(wchar_t* window_name, bool always_on_top)`。
+type FocusFn = unsafe extern "C" fn(*const u16, bool) -> i32;
 
-/// `FocusQQWindow2.dll`：把 QQ 窗口置顶/取消置顶并设成目标尺寸。
+/// `Focus2.dll`：把指定标题的窗口置顶/取消置顶并设成配置里的尺寸。
 pub struct FocusQqWindow {
     focus: FocusFn,
     _lib: Library,
@@ -441,20 +442,28 @@ pub struct FocusQqWindow {
 
 impl FocusQqWindow {
     fn load() -> Result<Self, String> {
-        let lib = open_library("FocusQQWindow2.dll")?;
-        // SAFETY: `focus` 的 C 侧签名是 `int focus(bool)`。
+        let lib = open_library("Focus2.dll")?;
+        // SAFETY: `focus` 的 C 侧签名是 `int focus(wchar_t*, bool)`。
         unsafe {
             Ok(Self {
-                focus: load_fn(&lib, "FocusQQWindow2.dll", "focus")?,
+                focus: load_fn(&lib, "Focus2.dll", "focus")?,
                 _lib: lib,
             })
         }
     }
 
-    /// 对应 `Focus.focus(flag)`。
-    pub fn focus(&self, always_on_top: bool) -> i32 {
-        // SAFETY: 纯值调用。
-        unsafe { (self.focus)(always_on_top) }
+    /// 对应 `Focus.focus(windowName, flag)`。
+    ///
+    /// 窗口标题要以 NUL 结尾的 UTF-16 传过去（C 侧是 `std::wstring`，按 `wchar_t*` 收）。
+    /// 空标题会被 DLL 直接拒绝（返回 1，什么都不做）；命中时返回 0。
+    ///
+    /// 命中的窗口标题既可以是 `window_name` 本身，也可以是 Sandboxie 沙盒里的
+    /// `[#] <window_name> [#]` —— 这是 DLL 内部拼的，调用方不用管。
+    pub fn focus(&self, window_name: &str, always_on_top: bool) -> i32 {
+        let mut wide: Vec<u16> = window_name.encode_utf16().collect();
+        wide.push(0);
+        // SAFETY: wide 以 0 结尾，生命周期覆盖本次调用。
+        unsafe { (self.focus)(wide.as_ptr(), always_on_top) }
     }
 }
 
@@ -509,7 +518,7 @@ lazy_library!(
     focus_qq_window,
     FocusQqWindow,
     FocusQqWindow::load(),
-    "全局 `FocusQQWindow2.dll` 实例。"
+    "全局 `Focus2.dll` 实例。"
 );
 
 #[cfg(test)]
@@ -531,7 +540,33 @@ mod tests {
         VisionDll::load().expect("Vision.dll 导出函数缺失");
         ScreenCapture::load().expect("ScreenCapture.dll 导出函数缺失");
         UploadFile::load().expect("uploadFile.dll 导出函数缺失");
-        FocusQqWindow::load().expect("FocusQQWindow2.dll 导出函数缺失");
+        FocusQqWindow::load().expect("Focus2.dll 导出函数缺失");
+    }
+
+    /// `focus` 的 C 侧签名是 `int focus(wchar_t*, bool)`：空标题会被直接拒掉（返回 1）。
+    ///
+    /// 这条是"少传一个参数"的回归测试：按旧的 `int focus(bool)` 调，第一个参数会被
+    /// DLL 当成 `wchar_t*` 解引用，直接崩在 `std::wstring` 的赋值里。
+    /// 传空标题时 DLL 读完参数就返回，不会碰任何窗口，所以随便跑都安全；
+    /// 传真标题会去改真实窗口的尺寸/置顶状态，测试里不能那么干。
+    #[test]
+    fn focus_rejects_an_empty_window_name() {
+        if find_dll("Focus2.dll").is_err() {
+            eprintln!("跳过：当前目录没有 Focus2.dll");
+            return;
+        }
+        let focus = FocusQqWindow::load().expect("Focus2.dll 导出函数缺失");
+
+        // 空字符串（以及只有 NUL 的那种）都应该走"不干活"的分支。
+        // 返回 0 通常说明手上是旧版 DLL（签名还是 `int focus(bool)`）——
+        // 那种情况下第一个参数会被当成 `wchar_t*` 解引用，行为完全不可信。
+        assert_eq!(
+            focus.focus("", true),
+            1,
+            "空标题应该被拒绝；返回值不是 1 一般是 Focus2.dll 太旧，\
+             重新编译 VisionQQ_C/FocusQQWindow2 再试"
+        );
+        assert_eq!(focus.focus("", false), 1, "同上");
     }
 
     #[test]

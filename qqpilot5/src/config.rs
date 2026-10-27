@@ -89,7 +89,7 @@ pub struct Config {
 
     pub sleep: u32,
     pub mouse_smooth_move: bool,
-    pub max_output:u16,
+    pub max_output: u16,
 }
 
 impl Default for Config {
@@ -119,7 +119,7 @@ impl Default for Config {
             extra: Map::new(),
             sleep: 0,
             mouse_smooth_move: false,
-            max_output:500,
+            max_output: 500,
         }
     }
 }
