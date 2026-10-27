@@ -274,18 +274,21 @@ fn main() {
         sleep::ms(1000);
         clipboard::set_text("");
 
-        let copy_points:Vec<(u32,u32)>=match copy_points_cache.consume() {
-            Ok(point) => vec![point],
-            Err(_) => {vision::find_templates(vision::SCREENSHOT_FILE, "./copy.png", 30, 1)
-            .unwrap_or_else(|_| {
-                panic!(
-                    "{}",
-                    localization::get(&translate, "error.matchtemplate.failed")
-                )
-            })},
+        let copy_points: Vec<(u32, u32)> = match copy_points_cache.consume() {
+            Ok(point) => {
+                sleep::ms(100);
+                vec![point]
+            }
+            Err(_) => vision::find_templates(vision::SCREENSHOT_FILE, "./copy.png", 30, 1)
+                .unwrap_or_else(|_| {
+                    panic!(
+                        "{}",
+                        localization::get(&translate, "error.matchtemplate.failed")
+                    )
+                }),
         };
         if copy_points.is_empty() {
-            copy_points_cache.expiry();
+            copy_points_cache.expire();
             log::print(localization::get(&translate, "error.matchtemplate.failed"));
             for _ in 0..(settings.scroll * 2) {
                 sleep::ms(400);

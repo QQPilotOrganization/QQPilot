@@ -46,7 +46,7 @@ pub fn upload_image(upload_image_possible_actual_size: RectI) {
    
 
     if found.is_empty() {
-        guard.expiry();
+        guard.expire();
         log::print(failure);
         let _ = Command::new("uploadImage2.exe").status();
         thread::sleep(Duration::from_millis(200));

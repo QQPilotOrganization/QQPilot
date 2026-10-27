@@ -36,7 +36,7 @@ impl CachedPoint {
         Ok(self.point)
     }
     //该点立刻失效
-    pub fn expiry(&mut self)
+    pub fn expire(&mut self)
     {
         self.expiry=0;
     }
