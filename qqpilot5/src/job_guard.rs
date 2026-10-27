@@ -17,12 +17,12 @@ pub struct JobGuard {
 }
 
 pub(crate) fn str_to_pcwstr(s: &str) -> Vec<u16> {
-    let result = s
+    
+    s
         .to_string()
         .encode_utf16()
         .chain(std::iter::once(0))
-        .collect();
-    result
+        .collect()
 }
 
 impl JobGuard {

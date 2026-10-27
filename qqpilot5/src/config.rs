@@ -174,7 +174,7 @@ impl Config {
             extra: load_extra(EXTRA_FILE),
             sleep: get_u32(&ini, "sleep", 0),
             mouse_smooth_move: get_bool(&ini, "mouse_smooth_move", true),
-            max_output: get_u16(&ini, "max_output", 500).min(500).max(0),
+            max_output: get_u16(&ini, "max_output", 500).min(500),
         }
     }
 }

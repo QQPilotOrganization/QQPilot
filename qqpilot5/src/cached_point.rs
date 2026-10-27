@@ -25,7 +25,7 @@ impl CachedPoint {
     }
     //是否失效
     pub fn expires(&self) -> bool {
-        return self.expiry == 0;
+        self.expiry == 0
     }
     //使用一次，失效-1
     pub fn consume(&mut self) -> Result<(u32, u32)> {

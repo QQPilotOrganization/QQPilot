@@ -37,12 +37,12 @@ pub fn start(color: Color, text: &str) {
         while !flag.load(Ordering::Relaxed) {
             let frame = FRAMES[index % FRAMES.len()];
             log::set_color(color);
-            let line;
-            if windows8() {
-                line = format!("{text}\x1b[0m")
+            
+            let line = if windows8() {
+                format!("{text}\x1b[0m")
             } else {
-                line = format!("{frame} {text}\x1b[0m");
-            }
+                format!("{frame} {text}\x1b[0m")
+            };
             log::reset();
 
             clear_line();

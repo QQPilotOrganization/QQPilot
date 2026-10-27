@@ -152,7 +152,7 @@ fn main() {
     log::set_color(Color::Yellow);
     log::print(format!(
         "\t{}",
-        &localization::get(&translate, "warning.nevermovemouse")
+        localization::get(&translate, "warning.nevermovemouse")
     ));
     log::print("");
     log::set_color(Color::Cyan);
@@ -164,7 +164,7 @@ fn main() {
     log::set_color(Color::Cyan);
     log::print(format!(
         "{} {character_name}。",
-        &localization::get(&translate, "info.welcome")
+        localization::get(&translate, "info.welcome")
     ));
     log::print(localization::get(&translate, "info.autofocus"));
 
@@ -222,7 +222,7 @@ fn main() {
     while !CANCELLED.load(Ordering::Relaxed) {
         print!(
             "{}\r",
-            &localization::get(&translate, "info.searchingnewmessage")
+            localization::get(&translate, "info.searchingnewmessage")
         );
         let _ = std::io::stdout().flush();
 
@@ -254,7 +254,7 @@ fn main() {
         log::set_color(Color::Green);
         log::print(format!(
             "{}: {contain:?}",
-            &localization::get(&translate, "info.found.reddot")
+            localization::get(&translate, "info.found.reddot")
         ));
         log::reset();
 
