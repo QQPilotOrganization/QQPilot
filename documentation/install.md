@@ -6,7 +6,8 @@
 
 
 - 使用时会**占用鼠标和键盘**，推荐试用后，使用旧的计算机部署。
-- 如果只有一台计算机，并且还希望在运行时使用别的程序，推荐:
+
+>[!info] 如果只有一台计算机，并且还希望在运行时使用别的程序，推荐:
 > - [VirtualDesktopRDP](https://github.com/Na2Cr2O7/VirtualDesktopRDP) 基于RDP的虚拟桌面。无需虚拟机，低占用。
 >  - [虚拟机](../InstallVM/readme.md) 适用于性能较好的计算机。
 
@@ -79,6 +80,10 @@ ollama pull minicpm-v4.7:1b
 
 在`菜单.exe`中选择`启动QQPilot`。
  - 程序将自动监控未读消息并智能回复
+
+ 
+* 如果出现这种情况你可能需要**管理员身份运行**
+![alt text](image-2.png)
 
 正常运行时应该如下
 ![alt text](../assets/running.png)

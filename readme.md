@@ -28,6 +28,8 @@
 
 [安装](documentation/install.md)
 
+[各配置项用法](documentation/options.md)
+
 [配置要求](documentation/requirements.md)
 
 [工作原理](documentation/工作原理.md)
