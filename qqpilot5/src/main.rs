@@ -36,7 +36,7 @@ use positions::{PointI, RectI};
 use upload_content::UploadContent;
 // use windows_version::OsVersion;
 
-use crate::cached_point::CachedPoint;
+// use crate::cached_point::CachedPoint;
 use crate::sleep::ms_output;
 use crate::windows8::windows8;
 
@@ -56,7 +56,7 @@ mod sleep;
 mod windows8;
 
 use anyhow::Result;
-mod cached_point;
+// mod cached_point;
 fn main() {
     let translate = localization::load();
 
@@ -219,7 +219,7 @@ fn main() {
     unsafe { SetConsoleCtrlHandler(Some(console_ctrl_handler), 1) };
 
     let mut answer_model: Option<Answer> = None;
-    let mut copy_points_cache = CachedPoint::new_expired();
+    // let mut copy_points_cache = CachedPoint::new_expired();
     while !CANCELLED.load(Ordering::Relaxed) {
         if rest_schedule::in_schedule(&settings.rest_schedule) {
             print!(
@@ -284,21 +284,15 @@ fn main() {
         sleep::ms(1000);
         clipboard::set_text("");
 
-        let copy_points: Vec<(u32, u32)> = match copy_points_cache.consume() {
-            Ok(point) => {
-                sleep::ms(100);
-                vec![point]
-            }
-            Err(_) => vision::find_templates(vision::SCREENSHOT_FILE, "./copy.png", 30, 1)
+        let copy_points: Vec<(u32, u32)> = vision::find_templates(vision::SCREENSHOT_FILE, "./copy.png", 30, 1)
                 .unwrap_or_else(|_| {
                     panic!(
                         "{}",
                         localization::get(&translate, "error.matchtemplate.failed")
                     )
-                }),
-        };
+                });
         if copy_points.is_empty() {
-            copy_points_cache.expire();
+
             log::print(localization::get(&translate, "error.matchtemplate.failed"));
             for _ in 0..(settings.scroll * 2) {
                 sleep::ms(400);
@@ -314,7 +308,6 @@ fn main() {
             gui_operation::press_key("enter");
             sleep::ms(200);
         } else {
-            copy_points_cache.update(copy_points[0]);
             sleep::ms(800);
             gui_operation::click(
                 (copy_points[0].0 + copy_button_possible.0 as u32) as i32,
