@@ -228,6 +228,7 @@ fn main() {
             );
             let _ = std::io::stdout().flush();
             sleep::s(60);
+            continue;
         }
         print!(
             "{}\r",
