@@ -40,7 +40,8 @@
   </Project>
   <Project Path="UploadFiles/UploadFiles.vcxproj" Id="417c2125-5e0b-4b2a-b4a5-95ba6d5f32fc">
     <BuildType Solution="release2|*" Project="Release" />
-    <Platform Solution="*|ARM64" Project="x64" />
+    <Platform Solution="Debug|ARM64" Project="x64" />
+    <Platform Solution="release2|ARM64" Project="x64" />
   </Project>
   <Project Path="uploadImage2/uploadImage2.vcxproj" Id="2cc22cc3-616e-4be1-84f9-a3a575c22b05">
     <BuildType Solution="release2|*" Project="Release" />

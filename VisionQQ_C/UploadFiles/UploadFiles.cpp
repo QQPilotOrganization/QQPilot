@@ -1,22 +1,4 @@
 // UploadFiles.cpp : 把一批文件传到 QQ 聊天窗口，并点"发送"。
-//
-// 全部复用 VisionQQ_C 里已有的 DLL：
-//   ScreenCapture.dll  —— 截全屏到 screenshot.png
-//   Vision.dll         —— 在截图里找 file.png（那个"文件"图标）
-//   InputEvent.dll     —— 设置 DPI 感知 + 鼠标点击
-//   uploadFile.dll     —— 往上传对话框里填路径并点"打开"
-//
-// 流程：
-//   1. 声明 DPI 感知，读 config.ini 的 scale / width / height
-//   2. 自行截图
-//   3. 定位 file.png，算出图标中心
-//   4. 点开上传对话框，等 1 秒
-//   5. 一次上传所有文件（填进对话框并点"打开"），等 1 秒
-//   6. 点 readyToSend 对应点，退出
-//
-// 用法：
-//   UploadFiles.exe <目录或文件> [更多文件...] [选项]
-//   选项见 --help。
 
 #include <Windows.h>
 
@@ -214,9 +196,7 @@ static bool find_file_icon(
 	int tolerance,
 	Hit& hit)
 {
-	// 模板可能是在 100% 下截的，也可能已经是当前缩放下的像素：两种都试，
-	// 再往 preferred_scale 上下各挪一档。每个缩放都是一次全图扫描，别试太多。
-	std::vector<float> scales{preferred_scale, 1.0f, preferred_scale - 0.1f, preferred_scale + 0.1f};
+	std::vector<float> scales{preferred_scale, preferred_scale - 0.1f, preferred_scale + 0.1f};
 
 	const std::string image = screenshot.string();
 	const std::string templ = template_image.string();
@@ -481,7 +461,6 @@ int wmain(int argc, wchar_t** argv)
 		return fail("没有要上传的文件", 1);
 	}
 
-	// 1. DPI 感知要在截图之前：之后拿到的都是物理像素，点击坐标才对得上。
 	DPIAwarenessPrologue();
 
 	Settings settings = read_settings();
@@ -507,11 +486,6 @@ int wmain(int argc, wchar_t** argv)
 	}
 
 	log_line("Files: " + std::to_string(files.size()) );
-	//for (const auto& file : files)
-	//{
-	//	//log_line("  " + file.string());
-	//}
-
 	// 2. 截图（先删旧的，免得截图失败时误用上一次的图）。
 	std::error_code ignored;
 	fs::remove(SCREENSHOT_FILE, ignored);
