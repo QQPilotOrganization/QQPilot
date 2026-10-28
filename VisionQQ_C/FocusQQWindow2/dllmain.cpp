@@ -57,7 +57,7 @@ extern "C" int __declspec(dllexport) focus(wchar_t* windowName, bool alwaysOnTop
     }
 
     width = static_cast<int>(width * scale);
-    height *= static_cast<int>(scale);
+    height = static_cast<int>(scale* height);
 
     hwnds.reserve(4);
 
