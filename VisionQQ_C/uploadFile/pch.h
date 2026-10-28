@@ -21,4 +21,7 @@
 #include<ctime>
 #include<chrono>
 #include<random>
+#include <pathcch.h>
+
+#pragma comment(lib, "Pathcch.lib")
 #endif //PCH_H

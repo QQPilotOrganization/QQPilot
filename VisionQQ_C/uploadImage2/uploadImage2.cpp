@@ -15,7 +15,7 @@
 #pragma comment(lib, "GdiPlus")
 
 bool copyimage(const wchar_t* filename);
-std::wstring selectedImage;
+std::wstring anypath;
 static int select()
 {
 
@@ -83,7 +83,7 @@ static int select()
 		std::wcerr << TEXT("没有找到图片") << std::endl;
 		return -1;
 	}
-	selectedImage = std::wstring(path, std::wcslen(pathwithastar) - 1) + images.at(0);
+	anypath = std::wstring(path, std::wcslen(pathwithastar) - 1) + images.at(0);
 }
 
 std::unique_ptr<wchar_t[]> CharToWchar(const char* str) {
@@ -128,7 +128,7 @@ int main(int argc,char** argv)
 	{
 		//selectedImage = argv[1];
 		auto result=CharToWchar(argv[1]);
-		selectedImage = result.get();
+		anypath = result.get();
 	}
 	else if (argc==1)
 	{
@@ -145,8 +145,8 @@ int main(int argc,char** argv)
 	Gdiplus::GdiplusStartupInput gdiplusStartupInput;
 	ULONG_PTR gdiplusToken;
 	Gdiplus::GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
-	std::wcout << selectedImage << std::endl;
-	bool result = copyimage(selectedImage.c_str());
+	std::wcout << anypath << std::endl;
+	bool result = copyimage(anypath.c_str());
 
 	std::cout << result;
 	Gdiplus::GdiplusShutdown(gdiplusToken);

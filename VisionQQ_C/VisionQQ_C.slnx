@@ -30,10 +30,17 @@
   <Project Path="ScaleToINI/ScaleToINI.vcxproj" Id="0c76a433-d76d-456b-9b4f-d24f05845967">
     <BuildType Solution="release2|*" Project="Release" />
   </Project>
+  <Project Path="ScreenCapture/Vimage.vcxproj" Id="ac512d12-3665-49ac-afd1-149b900bcc3d">
+    <BuildType Solution="release2|*" Project="Release" />
+  </Project>
   <Project Path="uploadFile/uploadFile.vcxproj" Id="7bf54da3-9781-4781-ad30-2e0df178f894">
     <BuildType Solution="release2|*" Project="Release" />
     <Platform Solution="Debug|ARM64" Project="x64" />
     <Platform Solution="release2|ARM64" Project="x64" />
+  </Project>
+  <Project Path="UploadFiles/UploadFiles.vcxproj" Id="417c2125-5e0b-4b2a-b4a5-95ba6d5f32fc">
+    <BuildType Solution="release2|*" Project="Release" />
+    <Platform Solution="*|ARM64" Project="x64" />
   </Project>
   <Project Path="uploadImage2/uploadImage2.vcxproj" Id="2cc22cc3-616e-4be1-84f9-a3a575c22b05">
     <BuildType Solution="release2|*" Project="Release" />
