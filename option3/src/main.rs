@@ -18,7 +18,7 @@ use config::{NULLSTR, Settings};
 use connect_test::{Failure, Outcome, Probe};
 
 const CLIENT_WIDTH: u32 = 1075;
-const CLIENT_HEIGHT: u32 = 500;
+const CLIENT_HEIGHT: u32 = 650;
 
 const MARGIN_RIGHT: i32 = 20;
 const MARGIN_BOTTOM: i32 = 50;
@@ -90,13 +90,13 @@ pub struct SettingsApp {
     #[nwg_control(text: localization::text("option.window.width"), size: (70, 20), position: (11, 66))]
     label_window_width: nwg::Label,
 
-    #[nwg_control(size: (84, 34), position: (86, 59), flags: "VISIBLE|TAB_STOP|NUMBER")]
+    #[nwg_control(size: (84, 30), position: (86, 59), flags: "VISIBLE|TAB_STOP|NUMBER")]
     win_width: nwg::TextInput,
 
     #[nwg_control(text: localization::text("option.window.height"), size: (70, 20), position: (174, 66))]
     label_window_height: nwg::Label,
 
-    #[nwg_control(size: (84, 34), position: (248, 59), flags: "VISIBLE|TAB_STOP|NUMBER")]
+    #[nwg_control(size: (84, 30), position: (248, 59), flags: "VISIBLE|TAB_STOP|NUMBER")]
     win_height: nwg::TextInput,
 
     #[nwg_control(text: localization::text("option.token.count"), size: (90, 20), position: (335, 66), h_align: nwg::HTextAlign::Center)]
@@ -113,7 +113,7 @@ pub struct SettingsApp {
     #[nwg_control(text: localization::text("option.max.image.count"), size: (70, 20), position: (11, 103))]
     label_max_image_count: nwg::Label,
 
-    #[nwg_control(size: (84, 34), position: (86, 97), flags: "VISIBLE|TAB_STOP|NUMBER")]
+    #[nwg_control(size: (84, 30), position: (86, 97), flags: "VISIBLE|TAB_STOP|NUMBER")]
     #[nwg_events(OnTextInput: [SettingsApp::max_image_count_changed])]
     max_image_count: nwg::TextInput,
 
@@ -124,7 +124,7 @@ pub struct SettingsApp {
     #[nwg_control(text: localization::text("option.model.name"), size: (70, 20), position: (11, 139))]
     label_model_name: nwg::Label,
 
-    #[nwg_control(size: (458, 36), position: (86, 131))]
+    #[nwg_control(size: (458, 30), position: (86, 131))]
     #[nwg_events(OnTextInput: [SettingsApp::guard_empty_text])]
     model_name: nwg::TextInput,
 
@@ -134,7 +134,7 @@ pub struct SettingsApp {
     #[nwg_control(text: localization::text("option.api.key"), size: (70, 20), position: (11, 215))]
     label_api_key: nwg::Label,
 
-    #[nwg_control(size: (350, 36), position: (84, 207))]
+    #[nwg_control(size: (350, 30), position: (84, 207))]
     #[nwg_events(OnTextInput: [SettingsApp::guard_empty_text])]
     api_key: nwg::TextInput,
 
@@ -151,75 +151,74 @@ pub struct SettingsApp {
     #[nwg_events(OnComboxBoxSelection: [SettingsApp::on_server_changed])]
     server_name: nwg::ComboBox<String>,
 
-    #[nwg_control(size: (343, 36), position: (200, 254))]
+    #[nwg_control(size: (343, 30), position: (200, 254))]
     #[nwg_events(OnTextInput: [SettingsApp::guard_empty_text])]
     server_url: nwg::TextInput,
 
-    #[nwg_control(text: localization::text("option.extra.json"), size: (130, 32), position: (200, 297))]
+    #[nwg_control(text: localization::text("option.extra.json"), size: (200, 32), position: (11, 297))]
     #[nwg_events(OnButtonClick: [SettingsApp::open_extra_json])]
     button_extra_json: nwg::Button,
 
     // #[nwg_control(text: localization::text("option.force.ollama"), size: (2000  , 20), position: (336, 302))]
     // label_force_ollama: nwg::Label,
-    #[nwg_control(text: localization::text("option.force.ollama"), size: (200,30), position: (336, 297), flags: "VISIBLE|TAB_STOP")]
+    #[nwg_control(text: localization::text("option.force.ollama"), size: (200,30), position: (310, 300), flags: "VISIBLE|TAB_STOP")]
     force_ollama_api: nwg::CheckBox,
 
     // ---- 交互节奏 ----
-    #[nwg_control(text: localization::text("option.scroll"), size: (90, 20), position: (11, 302))]
+    #[nwg_control(text: localization::text("option.scroll"), size: (90, 30), position: (11, 508))]
     label_scroll: nwg::Label,
 
-    #[nwg_control(size: (84, 34), position: (105, 294), flags: "VISIBLE|TAB_STOP|NUMBER")]
+    #[nwg_control(size: (84, 30), position: (105,  502), flags: "VISIBLE|TAB_STOP|NUMBER")]
     #[nwg_events(OnTextInput: [SettingsApp::scroll_changed])]
     scroll: nwg::TextInput,
 
-    #[nwg_control(text: localization::text("option.with.image"), size: (90,30), position: (11,330), flags: "VISIBLE|TAB_STOP")]
+    #[nwg_control(text: localization::text("option.with.image"), size: (90,30), position: (11,370), flags: "VISIBLE|TAB_STOP")]
     with_image: nwg::CheckBox,
 
-    #[nwg_control(text: localization::text("option.auto.login"), size: (150,30), position: (120,330), flags: "VISIBLE|TAB_STOP")]
+    #[nwg_control(text: localization::text("option.auto.login"), size: (150,30), position: (120,530), flags: "VISIBLE|TAB_STOP")]
     auto_login: nwg::CheckBox,
 
     // #[nwg_control(text: localization::text("option.auto.focusing"), size: (170, 20), position: (336, 341))]
     // label_auto_focusing: nwg::Label,
-    #[nwg_control(text: localization::text("option.auto.focusing"), size: (170,30), position: (336,330), flags: "VISIBLE|TAB_STOP")]
+    #[nwg_control(text: localization::text("option.auto.focusing"), size: (170,30), position: (336,540), flags: "VISIBLE|TAB_STOP")]
     auto_focusing: nwg::CheckBox,
 
     // #[nwg_control(text: localization::text("option.enable.thinking"), size: (170,30), position: (350, 475), flags: "VISIBLE|TAB_STOP")]
     // enable_thinking: nwg::CheckBox,
 
     // ---- 发送图片概率 ----
-    #[nwg_control(text: localization::text("option.send.image.possibility"), size: (118, 20), position: (9, 378))]
+    #[nwg_control(text: localization::text("option.send.image.possibility"), size: (118, 20), position: (9, 405))]
     label_possibility: nwg::Label,
 
-    #[nwg_control(size: (424,30), position: (120, 373), range: Some(0..100), pos: Some(0),
+    #[nwg_control(size: (400,30), position: (130, 400), range: Some(0..100), pos: Some(0),
                   flags: "VISIBLE|TAB_STOP|HORIZONTAL")]
     #[nwg_events(OnHorizontalScroll: [SettingsApp::possibility_changed])]
     send_image_possibility: nwg::TrackBar,
 
-    #[nwg_control(text: localization::text("option.sleep"), size: (180, 20), position: (200, 410)) ]
+    #[nwg_control(text: localization::text("option.sleep"), size: (180, 20), position: (11, 440)) ]
     label_sleep: nwg::Label,
 
-    #[nwg_control(text: "", size: (134, 20), position: (360, 410),flags: "VISIBLE|TAB_STOP|NUMBER")]
+    #[nwg_control(text: "", size: (64, 30), position: (180, 437),flags: "VISIBLE|TAB_STOP|NUMBER")]
     sleep: nwg::TextInput,
 
-    #[nwg_control(text: localization::text("option.at.detect"), size: (130,30), position: (11, 400), flags: "VISIBLE|TAB_STOP")]
+    #[nwg_control(text: localization::text("option.at.detect"), size: (130,30), position: (11, 540), flags: "VISIBLE|TAB_STOP")]
     at_detect: nwg::CheckBox,
 
-    
     #[nwg_control(text: localization::text("option.mouse.smooth"), size: (160,30), position: (11, 470), flags: "VISIBLE|TAB_STOP")]
     mouse_smooth_move: nwg::CheckBox,
 
     #[nwg_control(text: localization::text("option.max_output"), size: (180, 20), position: (200, 480)) ]
     label_max_output: nwg::Label,
 
-    #[nwg_control(text: "", size: (134, 18), position: (330, 480),flags: "VISIBLE|TAB_STOP|NUMBER")]
+    #[nwg_control(text: "", size: (134, 30), position: (330, 480),flags: "VISIBLE|TAB_STOP|NUMBER")]
     #[nwg_events(OnTextInput: [SettingsApp::max_output_changed])]
     max_output: nwg::TextInput,
 
     // ---- 超时 / tab 次数 ----
-    #[nwg_control(text: localization::text("option.timeout"), size: (150, 20), position: (11, 446))]
+    #[nwg_control(text: localization::text("option.timeout"), size: (150, 20), position: (11, 346))]
     label_timeout: nwg::Label,
 
-    #[nwg_control(size: (84, 34), position: (174, 439), flags: "VISIBLE|TAB_STOP|NUMBER")]
+    #[nwg_control(size: (84, 30), position: (160, 346), flags: "VISIBLE|TAB_STOP|NUMBER")]
     remote_server_timeout: nwg::TextInput,
 
     #[nwg_control(text: localization::text("option.tab.times"), size: (134, 20), position: (290, 446))]
@@ -228,6 +227,17 @@ pub struct SettingsApp {
     #[nwg_control(size: (111, 72), position: (433, 437), flags: "VISIBLE|TAB_STOP",
                   collection: vec!["7".to_string(), "8".to_string()])]
     tab_times: nwg::ComboBox<String>,
+
+    #[nwg_control(text: localization::text("option.rest.schedule"), size: (150, 20), position: (11, 585))]
+    label_rest_schedule: nwg::Label,
+    #[nwg_control(text: localization::text("option.rest.schedule.hint"), size: (600, 20), position: (11, 620))]
+    label_rest_schedule2: nwg::Label,
+    #[nwg_control(size: (300, 30), position: (90, 580), flags: "VISIBLE|TAB_STOP")]
+    #[nwg_events(OnTextInput: [SettingsApp::max_output_changed])]
+    rest_schedule: nwg::TextInput,
+
+    #[nwg_control(text: localization::text("option.simulate.output.speed"), size: (160,30), position: (400, 580), flags: "VISIBLE|TAB_STOP")]
+    simulate_output_speed: nwg::CheckBox,
 
     // ---- 提示文本 / 保存 ----
     #[nwg_control(text: localization::text("option.system.text"), size: (80, 20), position: (550, 7))]
@@ -326,6 +336,7 @@ impl SettingsApp {
             .set_check_state(check_state(settings.with_image));
         self.auto_login
             .set_check_state(check_state(settings.auto_login));
+        self.auto_login.set_visible(false);
         self.auto_focusing
             .set_check_state(check_state(settings.auto_focusing));
         self.at_detect
@@ -337,6 +348,9 @@ impl SettingsApp {
 
         self.send_image_possibility
             .set_pos(settings.send_image_possibility.clamp(0, 100) as usize);
+
+        self.rest_schedule.set_text(&settings.rest_schedule);
+        self.simulate_output_speed.set_check_state(check_state(settings.simulate_output_speed));
         self.refresh_possibility_label();
 
         // Win32 下拉框的显示区高度由字体决定，不会理会 builder 里给的高度，
@@ -384,7 +398,7 @@ impl SettingsApp {
             server_url: self.server_url.text(),
             scroll: read(&self.scroll, Settings::default().scroll).clamp(SCROLL_MIN, SCROLL_MAX),
             with_image: self.with_image.check_state() == nwg::CheckBoxState::Checked,
-            auto_login: self.auto_login.check_state() == nwg::CheckBoxState::Checked,
+            auto_login: false,
             auto_focusing: self.auto_focusing.check_state() == nwg::CheckBoxState::Checked,
             send_image_possibility: self.send_image_possibility.pos() as i32,
             at_detect: self.at_detect.check_state() == nwg::CheckBoxState::Checked,
@@ -403,6 +417,9 @@ impl SettingsApp {
             sleep: read(&self.sleep, 0),
             mouse_smooth_move: self.mouse_smooth_move.check_state() == nwg::CheckBoxState::Checked,
             max_output: read(&self.max_output, MAX_OUTPUT_MAX),
+            rest_schedule: read(&self.rest_schedule, Settings::default().rest_schedule),
+            simulate_output_speed: self.simulate_output_speed.check_state()
+                == nwg::CheckBoxState::Checked,
         };
 
         if let Err(e) = settings.save(&self.system_text.text()) {
@@ -418,6 +435,7 @@ impl SettingsApp {
             &self.model_name,
             &self.api_key,
             &self.server_url,
+            &self.rest_schedule
         ] {
             if input.text().trim().is_empty() {
                 input.set_text(NULLSTR);
@@ -429,15 +447,13 @@ impl SettingsApp {
     fn max_image_count_changed(&self) {
         clamp_input(&self.max_image_count, MAX_IMAGE_MIN, MAX_IMAGE_MAX);
     }
-    
+
     /// 对应 `Scroll_ValueChanged`：把值夹到 1..200。
     fn scroll_changed(&self) {
         clamp_input(&self.scroll, SCROLL_MIN, SCROLL_MAX);
     }
-    fn max_output_changed(&self)
-    {
+    fn max_output_changed(&self) {
         clamp_input(&self.max_output, 0, MAX_OUTPUT_MAX.into());
-
     }
 
     /// 对应 `SendImagePossibility` 的取值变化：把数值回显到左侧标签。

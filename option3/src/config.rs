@@ -50,6 +50,8 @@ pub struct Settings {
     pub sleep: u32,
     pub mouse_smooth_move: bool,
     pub max_output: u16,
+    pub simulate_output_speed: bool,
+    pub rest_schedule: String,
 }
 
 impl Default for Settings {
@@ -77,6 +79,8 @@ impl Default for Settings {
             sleep: 0,
             mouse_smooth_move: false,
             max_output: 500,
+            simulate_output_speed: false,
+            rest_schedule: String::from("0,1,2,3,4,5,6,7,8"),
         }
     }
 }
@@ -138,6 +142,8 @@ impl Settings {
             sleep: get_u32("sleep", d.sleep),
             mouse_smooth_move: get_bool("mouse_smooth_move", d.mouse_smooth_move),
             max_output: get_u16("max_output", 500).min(500),
+            simulate_output_speed: get_bool("simulate_output_speed", d.simulate_output_speed),
+            rest_schedule: get_str("rest_schedule", &d.rest_schedule),
         }
     }
 
@@ -166,7 +172,7 @@ impl Settings {
             ));
         }
 
-        let values: [(&str, String); 21] = [
+        let values: [(&str, String); 23] = [
             ("version", self.version.clone()),
             ("name", self.name.clone()),
             ("width", self.width.to_string()),
@@ -194,6 +200,9 @@ impl Settings {
             ("sleep", self.sleep.to_string()),
             ("mouse_smooth_move", bool_text(self.mouse_smooth_move)),
             ("max_output", self.max_output.to_string()),
+            ("simulate_output_speed",bool_text(self.simulate_output_speed)),
+            ("rest_schedule",self.rest_schedule.to_string()),
+
         ];
         for (key, value) in values {
             ini.set(SECTION, key, Some(value));

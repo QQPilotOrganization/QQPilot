@@ -90,6 +90,8 @@ pub struct Config {
     pub sleep: u32,
     pub mouse_smooth_move: bool,
     pub max_output: u16,
+    pub simulate_output_speed:bool,
+    pub rest_schedule:String,
 }
 
 impl Default for Config {
@@ -120,6 +122,8 @@ impl Default for Config {
             sleep: 0,
             mouse_smooth_move: false,
             max_output: 500,
+            simulate_output_speed:false,
+            rest_schedule:String::from("0,1,2,3,4,5,6,7,8")
         }
     }
 }
@@ -172,9 +176,11 @@ impl Config {
             force_ollama_api: get_bool(&ini, "forceollamaapi", d.force_ollama_api),
             system_prompt: load_system_prompt(SYSTEM_PROMPT_FILE),
             extra: load_extra(EXTRA_FILE),
-            sleep: get_u32(&ini, "sleep", 0),
-            mouse_smooth_move: get_bool(&ini, "mouse_smooth_move", true),
-            max_output: get_u16(&ini, "max_output", 500).min(500),
+            sleep: get_u32(&ini, "sleep", d.sleep),
+            mouse_smooth_move: get_bool(&ini, "mouse_smooth_move", d.mouse_smooth_move),
+            max_output: get_u16(&ini, "max_output", d.max_output).min(500),
+            simulate_output_speed:get_bool(&ini, "simulate_output_speed", d.simulate_output_speed),
+            rest_schedule:get_str(&ini, "rest_schedule", &d.rest_schedule)
         }
     }
 }

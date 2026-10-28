@@ -12,6 +12,7 @@ mod gui_operation;
 mod log;
 mod native;
 mod positions;
+mod rest_schedule;
 mod spinner;
 mod tiny_lang_jaccard;
 mod upload;
@@ -220,6 +221,14 @@ fn main() {
     let mut answer_model: Option<Answer> = None;
     let mut copy_points_cache = CachedPoint::new_expired();
     while !CANCELLED.load(Ordering::Relaxed) {
+        if rest_schedule::in_schedule(&settings.rest_schedule) {
+            print!(
+                "{}\r",
+                localization::get(&translate, "info.rest.schedule")
+            );
+            let _ = std::io::stdout().flush();
+            sleep::s(60);
+        }
         print!(
             "{}\r",
             localization::get(&translate, "info.searchingnewmessage")

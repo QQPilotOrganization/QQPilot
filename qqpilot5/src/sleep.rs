@@ -8,7 +8,9 @@ use crate::localization;
 pub(crate) fn ms(milliseconds: u64) {
     thread::sleep(Duration::from_millis(milliseconds));
 }
-
+pub(crate) fn s(seconds: u64) {
+    thread::sleep(Duration::from_secs(seconds));
+}
 pub(crate) fn ms_output(milliseconds: u64) {
     let translate = localization::load();
     let seconds: u64 = milliseconds / 1000;
