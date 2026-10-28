@@ -214,7 +214,20 @@ mod tests {
 }"#,
         )
         .expect("不是合法的json");
-        std::fs::write("zh-CN.json", value.to_string()).unwrap();
+        // 写成缩进格式，而且缩进用 4 空格（`to_string_pretty` 只给 2 空格）：
+        // `zh-CN.json` 是要提交的，这个测试每次跑都会重写它，格式必须和仓库里那份
+        // 完全一致，否则每跑一次测试整个文件都会被算成一次改动。
+        // JSON 里的换行都会被转义成 `\n`，所以按行处理是安全的，不会动到值里的内容。
+        let pretty = serde_json::to_string_pretty(&value).expect("翻译表一定是合法 JSON");
+        let text = pretty
+            .lines()
+            .map(|line| {
+                let indent = line.len() - line.trim_start_matches(' ').len();
+                format!("{}{}", " ".repeat(indent * 2), &line[indent..])
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        std::fs::write("zh-CN.json", text).unwrap();
     }
 
     /// 把中文表写出来（这是生成 `zh-CN.json` 的入口）。
