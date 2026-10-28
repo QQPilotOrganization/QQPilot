@@ -184,10 +184,9 @@ fn paste_text_to_section(text: &str, section: RectI) {
     if config::get().simulate_output_speed {
         for c in text.chars() {
             clipboard::set_text(&c.to_string());
-            thread::sleep(Duration::from_millis(20));
-            click_center(section);
+            thread::sleep(Duration::from_millis(100));
             hot_key("ctrl", "v");
-            thread::sleep(Duration::from_millis(800));
+            thread::sleep(Duration::from_millis(80));
         }
     } else {
         clipboard::set_text(text);
