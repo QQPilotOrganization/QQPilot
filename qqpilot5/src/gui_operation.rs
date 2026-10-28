@@ -181,11 +181,22 @@ pub fn send_text(text: &str, comment_section: RectI) {
 
 /// 对应 `GUIOperation.PasteTextToSection`。
 fn paste_text_to_section(text: &str, section: RectI) {
-    clipboard::set_text(text);
-    thread::sleep(Duration::from_millis(200));
-    click_center(section);
-    hot_key("ctrl", "v");
-    thread::sleep(Duration::from_millis(800));
+    if config::get().simulate_output_speed {
+        for c in text.chars() {
+            // println!("字符: {}", c);
+            clipboard::set_text(&c.to_string());
+            thread::sleep(Duration::from_millis(20));
+            click_center(section);
+            hot_key("ctrl", "v");
+            thread::sleep(Duration::from_millis(800));
+        }
+    } else {
+        clipboard::set_text(text);
+        thread::sleep(Duration::from_millis(200));
+        click_center(section);
+        hot_key("ctrl", "v");
+        thread::sleep(Duration::from_millis(800));
+    }
 }
 #[cfg(test)]
 mod tests {
