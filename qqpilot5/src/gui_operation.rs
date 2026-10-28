@@ -183,7 +183,6 @@ pub fn send_text(text: &str, comment_section: RectI) {
 fn paste_text_to_section(text: &str, section: RectI) {
     if config::get().simulate_output_speed {
         for c in text.chars() {
-            // println!("字符: {}", c);
             clipboard::set_text(&c.to_string());
             thread::sleep(Duration::from_millis(20));
             click_center(section);
