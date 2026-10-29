@@ -53,7 +53,7 @@
 
 如遇问题，欢迎提交 Issue。
 
-本项目采用 [The Unlicense](LICENSE)
+本项目(不包括第三方库)采用 [The Unlicense](LICENSE)
 
 <img alt="zzz" src="./assets/zzz.png" width="200" >
 

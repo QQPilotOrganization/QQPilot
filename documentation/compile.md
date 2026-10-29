@@ -22,8 +22,9 @@ uploadFile|C++|寻找Windows上传窗口并上传图片|
 uploadImage2|C++|复制图片粘贴到对话框，不支持动图|
 Vision|C++|颜色查找与模板匹配  ~~时间换空间~~ |
 VisionII|C++|未启用的裁剪图片dll|
+**UploadFiles**|C++|**使用cli上传文件，模拟点击上传文件按钮并上传。应与具有电脑操控权限的Agent使用。目前不附带在正式版中。**|
 
-rust项目可以使用`buildAll.cmd`一次性编译x64和arm64的程序
+rust项目可以使用`buildAll.cmd`一次性编译x64和arm64的程序。
 
 
 推荐C++项目使用
