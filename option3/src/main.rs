@@ -233,7 +233,7 @@ pub struct SettingsApp {
     #[nwg_control(text: localization::text("option.rest.schedule.hint"), size: (600, 20), position: (11, 620))]
     label_rest_schedule2: nwg::Label,
     #[nwg_control(size: (300, 30), position: (90, 580), flags: "VISIBLE|TAB_STOP")]
-    #[nwg_events(OnTextInput: [SettingsApp::max_output_changed])]
+    #[nwg_events(OnTextInput: [SettingsApp::guard_empty_text])]
     rest_schedule: nwg::TextInput,
 
     #[nwg_control(text: localization::text("option.simulate.output.speed"), size: (160,30), position: (400, 580), flags: "VISIBLE|TAB_STOP")]
