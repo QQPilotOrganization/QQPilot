@@ -407,7 +407,7 @@ static bool collect_files(const std::vector<fs::path>& inputs, std::vector<fs::p
 			std::sort(found.begin(), found.end());
 			if (found.empty())
 			{
-				std::cerr << "警告: 目录里没有文件: " << input.string() << std::endl;
+				std::cerr << "目录里没有文件: " << input.string() << std::endl;
 			}
 			for (const auto& path : found)
 			{
@@ -422,7 +422,7 @@ static bool collect_files(const std::vector<fs::path>& inputs, std::vector<fs::p
 			continue;
 		}
 
-		std::cerr << "错误: 既不是文件也不是目录: " << input.string() << std::endl;
+		std::cerr << " 既不是文件也不是目录: " << input.string() << std::endl;
 		return false;
 	}
 	return true;
@@ -519,7 +519,11 @@ int wmain(int argc, wchar_t** argv)
 	}
 	if (not wait_for_dialog(true, options.wait_ms))
 	{
-		return fail("上传对话框没出来（标题里没有\"请选择\"）", 5);
+		escape();
+	}
+	if (not wait_for_dialog(true, options.wait_ms))
+	{
+		return fail("上传对话框不可见", 5);
 	}
 	sleep_ms(1000);
 
@@ -541,6 +545,10 @@ int wmain(int argc, wchar_t** argv)
 	uploadSelectedFiles(raw_paths.data(), raw_paths.size());
 	if (not wait_for_dialog(false, options.wait_ms))
 	{
+		escape();
+	}
+	if (not wait_for_dialog(false, options.wait_ms))
+	{
 		return fail("上传对话框没有关掉，文件可能没选上", 6);
 	}
 	sleep_ms(1000);
@@ -552,11 +560,13 @@ int wmain(int argc, wchar_t** argv)
 		return 0;
 	}
 	log_line("点击发送 (" + std::to_string(options.ready_x) + "," + std::to_string(options.ready_y) + ")");
+
 	if (not Lclick(static_cast<unsigned>(options.ready_x), static_cast<unsigned>(options.ready_y)))
 	{
 		return fail("点击发送失败", 4);
 	}
 
 	log_line("完成。");
+	escape();
 	return 0;
 }

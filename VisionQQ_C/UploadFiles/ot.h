@@ -43,4 +43,6 @@ extern "C" __declspec(dllimport) bool Lclick(unsigned x, unsigned y);
 // --- uploadFile.dll ------------------------------------------------------
 // uploadSelectedFiles(): 把路径填进标题含"请选择"的上传对话框并点"打开"。
 extern "C" __declspec(dllimport) int uploadSelectedFiles(const wchar_t** filenames, size_t count);
+// esacpe():退出所有文件上传窗口
+extern "C" void __declspec(dllimport) escape();
 #pragma comment(lib, "uploadFile.lib")
