@@ -222,10 +222,7 @@ fn main() {
     // let mut copy_points_cache = CachedPoint::new_expired();
     while !CANCELLED.load(Ordering::Relaxed) {
         if rest_schedule::in_schedule(&settings.rest_schedule) {
-            print!(
-                "{}\r",
-                localization::get(&translate, "info.rest.schedule")
-            );
+            print!("{}\r", localization::get(&translate, "info.rest.schedule"));
             let _ = std::io::stdout().flush();
             sleep::s(60);
             continue;
@@ -284,15 +281,16 @@ fn main() {
         sleep::ms(1000);
         clipboard::set_text("");
 
-        let copy_points: Vec<(u32, u32)> = vision::find_templates(vision::SCREENSHOT_FILE, "./copy.png", 30, 1)
-                .unwrap_or_else(|_| {
+        let copy_points: Vec<(u32, u32)> =
+            vision::find_templates(vision::SCREENSHOT_FILE, "./copy.png", 30, 1).unwrap_or_else(
+                |_| {
                     panic!(
                         "{}",
                         localization::get(&translate, "error.matchtemplate.failed")
                     )
-                });
+                },
+            );
         if copy_points.is_empty() && settings.tab_after_match_template_failed {
-
             log::print(localization::get(&translate, "error.matchtemplate.failed"));
             for _ in 0..(settings.scroll * 2) {
                 sleep::ms(400);
@@ -307,13 +305,28 @@ fn main() {
             }
             gui_operation::press_key("enter");
             sleep::ms(200);
-        } else {
+        } else if !copy_points.is_empty() {
             sleep::ms(800);
             gui_operation::click(
                 (copy_points[0].0 + copy_button_possible.0 as u32) as i32,
                 (copy_points[0].1 + copy_button_possible.1 as u32) as i32,
             );
             sleep::ms(1500);
+        } else {
+            log::error(localization::get(
+                &translate,
+                "warning.message.notextracted",
+            ));
+            spinner::stop();
+            go_back(
+                settings.scale,
+                chat_button,
+                contact_button,
+                copy_button_possible,
+                upload_image_possible,
+                settings.sleep,
+            );
+            continue;
         }
 
         let chat_content_text = clipboard::get_text();
