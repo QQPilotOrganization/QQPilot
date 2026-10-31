@@ -165,10 +165,10 @@ pub struct SettingsApp {
     force_ollama_api: nwg::CheckBox,
 
     // ---- 交互节奏 ----
-    #[nwg_control(text: localization::text("option.scroll"), size: (90, 30), position: (11, 508))]
+    #[nwg_control(text: localization::text("option.scroll"), size: (150, 30), position: (11, 508))]
     label_scroll: nwg::Label,
 
-    #[nwg_control(size: (84, 30), position: (105,  502), flags: "VISIBLE|TAB_STOP|NUMBER")]
+    #[nwg_control(size: (84, 30), position: (165,  502), flags: "VISIBLE|TAB_STOP|NUMBER")]
     #[nwg_events(OnTextInput: [SettingsApp::scroll_changed])]
     scroll: nwg::TextInput,
 
