@@ -223,9 +223,9 @@ pub struct SettingsApp {
 
     #[nwg_control(text: localization::text("option.rest.schedule"), size: (150, 20), position: (11, 585))]
     label_rest_schedule: nwg::Label,
-    #[nwg_control(text: localization::text("option.rest.schedule.hint"), size: (600, 20), position: (11, 620))]
+    #[nwg_control(text: localization::text("option.rest.schedule.hint"), size: (800, 20), position: (11, 620))]
     label_rest_schedule2: nwg::Label,
-    #[nwg_control(size: (300, 30), position: (90, 580), flags: "VISIBLE|TAB_STOP")]
+    #[nwg_control(size: (280, 30), position: (105, 580), flags: "VISIBLE|TAB_STOP")]
     #[nwg_events(OnTextInput: [SettingsApp::guard_empty_text])]
     rest_schedule: nwg::TextInput,
 
@@ -243,13 +243,13 @@ pub struct SettingsApp {
     #[nwg_events(OnButtonClick: [SettingsApp::save_config])]
     button_save: nwg::Button,
 
-    #[nwg_control(text: localization::text("option.tab.after.match.template.failed"), size: (280,30), position: (550, 486), flags: "VISIBLE|TAB_STOP")]
+    #[nwg_control(text: localization::text("option.tab.after.match.template.failed"), size: (320,30), position: (550, 486), flags: "VISIBLE|TAB_STOP")]
     tab_after_match_template_failed: nwg::CheckBox,
     
-    #[nwg_control(text: localization::text("option.tab.times"), size: (134, 20), position: (850, 486))]
+    #[nwg_control(text: localization::text("option.tab.times"), size: (104, 20), position: (550, 520))]
     label_tab_times: nwg::Label,
 
-    #[nwg_control(size: (111, 72), position: (950,  486), flags: "VISIBLE|TAB_STOP",
+    #[nwg_control(size: (111, 72), position: (650,  520), flags: "VISIBLE|TAB_STOP",
                   collection: vec!["7".to_string(), "8".to_string()])]
     tab_times: nwg::ComboBox<String>,
 }
