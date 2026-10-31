@@ -1,10 +1,21 @@
 ﻿// dllmain.cpp : 定义 DLL 应用程序的入口点。
 #include "pch.h"
 #include "dllmain.h"
-//#include "screenscale.cpp"
 #include "inicpp.hpp"
 #include<iostream>
 #include <set>
+#include <vector>
+#include <cstring>
+
+
+//  _   _ _____ _____ ___        ____   ___  __  __ 
+// | | | |_   _|  ___( _ )   _  | __ ) / _ \|  \/  |
+// | | | | | | | |_  / _ \ _| |_|  _ \| | | | |\/| |
+// | |_| | | | |  _|| (_) |_   _| |_) | |_| | |  | |
+//  \___/  |_| |_|   \___/  |_| |____/ \___/|_|  |_|
+//
+// 请使用UTF8+BOM                   
+
 
 using namespace inicpp;
 
@@ -57,29 +68,35 @@ int getWidth()
 
 }
 
-static int CaptureAnImage(HWND hWnd, const float& scale, const wchar_t* name = L"")
+// 把整个屏幕抓成一张 32 位 BMP，直接放进内存。
+//
+// 以前是 CaptureAnImage 先写 `captureqwsx.bmp`、再 stbi_load 读回来、最后删掉：
+// 每截一次图都要落盘一个整屏 BMP（2560x1440 约 14MB）再读一遍，慢、费磁盘，
+// 而且中途失败会留下临时文件。现在同样的 GDI 流程，只是把三段 WriteFile
+// 换成往 vector 里 memcpy，像素完全一致。
+//
+// 返回 0 表示成功；`bmp` 里是完整的 BMP 文件内容（文件头 + 信息头 + 像素）。
+static int CaptureToMemory(HWND hWnd, const float& scale, std::vector<unsigned char>& bmp)
 {
-	HDC hdcScreen = NULL;
-	HDC hdcWindow = NULL;
+	// 声明全部提到最前面：下面有 goto done，C++ 不允许跳过带初始化的局部变量。
+	HDC hdcScreen = GetDC(NULL);
+	HDC hdcWindow = GetDC(hWnd);
 	HDC hdcMemDC = NULL;
 	HBITMAP hbmScreen = NULL;
 	HBITMAP hbmOld = NULL;
-	BITMAP bmpScreen;
-	DWORD dwBytesWritten = 0;
-	DWORD dwSizeofDIB = 0;
-	HANDLE hFile = INVALID_HANDLE_VALUE;
-	char* lpbitmap = NULL;
 	HANDLE hDIB = NULL;
+	char* lpbitmap = NULL;
+	RECT rcClient{};
+	BITMAP bmpScreen{};
+	BITMAPINFOHEADER bi{};
+	BITMAPFILEHEADER bmfHeader{};
 	DWORD dwBmpSize = 0;
-
-	// Retrieve the handle to a display device context for the client 
-	// area of the window. 
-	hdcScreen = GetDC(NULL);
-	hdcWindow = GetDC(hWnd);
+	int width = 0;
+	int height = 0;
+	int result = 1;
 
 	// Create a compatible DC, which is used in a BitBlt from the window DC.
 	hdcMemDC = CreateCompatibleDC(hdcWindow);
-
 	if (!hdcMemDC)
 	{
 		MessageBox(hWnd, L"CreateCompatibleDC has failed", L"Failed", MB_OK);
@@ -87,7 +104,6 @@ static int CaptureAnImage(HWND hWnd, const float& scale, const wchar_t* name = L
 	}
 
 	// Get the client area for size calculation.
-	RECT rcClient;
 	GetClientRect(hWnd, &rcClient);
 
 	// This is the best stretch mode.
@@ -106,17 +122,22 @@ static int CaptureAnImage(HWND hWnd, const float& scale, const wchar_t* name = L
 		MessageBox(hWnd, L"StretchBlt has failed", L"Failed", MB_OK);
 		goto done;
 	}
-	//Screen Scale
 
+	// Screen Scale
+	rcClient.left = static_cast<LONG>(rcClient.left * scale);
+	rcClient.top = static_cast<LONG>(rcClient.top * scale);
+	rcClient.right = static_cast<LONG>(rcClient.right * scale);
+	rcClient.bottom = static_cast<LONG>(rcClient.bottom * scale);
 
-	rcClient.bottom *= scale;
-	rcClient.top *= scale;
-	rcClient.left *= scale;
-	rcClient.right *= scale;
+	width = static_cast<int>(rcClient.right - rcClient.left);
+	height = static_cast<int>(rcClient.bottom - rcClient.top);
+	if (width <= 0 || height <= 0)
+	{
+		goto done;
+	}
 
 	// Create a compatible bitmap from the Window DC.
-	hbmScreen = CreateCompatibleBitmap(hdcWindow, rcClient.right - rcClient.left, rcClient.bottom - rcClient.top);
-
+	hbmScreen = CreateCompatibleBitmap(hdcWindow, width, height);
 	if (!hbmScreen)
 	{
 		MessageBox(hWnd, L"CreateCompatibleBitmap Failed", L"Failed", MB_OK);
@@ -128,12 +149,7 @@ static int CaptureAnImage(HWND hWnd, const float& scale, const wchar_t* name = L
 	hbmOld = (HBITMAP)SelectObject(hdcMemDC, hbmScreen);
 
 	// Bit block transfer into our compatible memory DC.
-	if (!BitBlt(hdcMemDC,
-		0, 0,
-		rcClient.right - rcClient.left, rcClient.bottom - rcClient.top,
-		hdcWindow,
-		0, 0,
-		SRCCOPY))
+	if (!BitBlt(hdcMemDC, 0, 0, width, height, hdcWindow, 0, 0, SRCCOPY))
 	{
 		MessageBox(hWnd, L"BitBlt has failed", L"Failed", MB_OK);
 		goto done;
@@ -142,26 +158,15 @@ static int CaptureAnImage(HWND hWnd, const float& scale, const wchar_t* name = L
 	// Get the BITMAP from the HBITMAP.
 	GetObject(hbmScreen, sizeof(BITMAP), &bmpScreen);
 
-	BITMAPFILEHEADER   bmfHeader;
-	BITMAPINFOHEADER   bi;
-
 	bi.biSize = sizeof(BITMAPINFOHEADER);
 	bi.biWidth = bmpScreen.bmWidth;
 	bi.biHeight = bmpScreen.bmHeight;
 	bi.biPlanes = 1;
 	bi.biBitCount = 32;
 	bi.biCompression = BI_RGB;
-	bi.biSizeImage = 0;
-	bi.biXPelsPerMeter = 0;
-	bi.biYPelsPerMeter = 0;
-	bi.biClrUsed = 0;
-	bi.biClrImportant = 0;
 
 	dwBmpSize = ((bmpScreen.bmWidth * bi.biBitCount + 31) / 32) * 4 * bmpScreen.bmHeight;
 
-	// Starting with 32-bit Windows, GlobalAlloc and LocalAlloc are implemented as wrapper functions that 
-	// call HeapAlloc using a handle to the process's default heap. Therefore, GlobalAlloc and LocalAlloc 
-	// have greater overhead than HeapAlloc.
 	hDIB = GlobalAlloc(GHND, dwBmpSize);
 	lpbitmap = (char*)GlobalLock(hDIB);
 	if (!lpbitmap)
@@ -169,47 +174,26 @@ static int CaptureAnImage(HWND hWnd, const float& scale, const wchar_t* name = L
 		goto done;
 	}
 
-	// Gets the "bits" from the bitmap, and copies them into a buffer 
+	// Gets the "bits" from the bitmap, and copies them into a buffer
 	// that's pointed to by lpbitmap.
 	GetDIBits(hdcWindow, hbmScreen, 0,
 		(UINT)bmpScreen.bmHeight,
 		lpbitmap,
 		(BITMAPINFO*)&bi, DIB_RGB_COLORS);
 
-	// A file is created, this is where we will save the screen capture.
-	hFile = CreateFile(name,
-		GENERIC_WRITE,
-		0,
-		NULL,
-		CREATE_ALWAYS,
-		FILE_ATTRIBUTE_NORMAL, NULL);
-	if (hFile == INVALID_HANDLE_VALUE)
-	{
-		goto done;
-	}
-
-	// Add the size of the headers to the size of the bitmap to get the total file size.
-	dwSizeofDIB = dwBmpSize + sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
-
-	// Offset to where the actual bitmap bits start.
-	bmfHeader.bfOffBits = (DWORD)sizeof(BITMAPFILEHEADER) + (DWORD)sizeof(BITMAPINFOHEADER);
-
-	// Size of the file.
-	bmfHeader.bfSize = dwSizeofDIB;
-
-	// bfType must always be BM for Bitmaps.
+	// 组装 BMP 文件内容：和以前 WriteFile 的那三段（文件头 / 信息头 / 像素）逐字节一致。
 	bmfHeader.bfType = 0x4D42; // BM.
+	bmfHeader.bfOffBits = (DWORD)sizeof(BITMAPFILEHEADER) + (DWORD)sizeof(BITMAPINFOHEADER);
+	bmfHeader.bfSize = dwBmpSize + sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
 
-	WriteFile(hFile, (LPSTR)&bmfHeader, sizeof(BITMAPFILEHEADER), &dwBytesWritten, NULL);
-	WriteFile(hFile, (LPSTR)&bi, sizeof(BITMAPINFOHEADER), &dwBytesWritten, NULL);
-	WriteFile(hFile, (LPSTR)lpbitmap, dwBmpSize, &dwBytesWritten, NULL);
+	bmp.resize(bmfHeader.bfSize);
+	std::memcpy(bmp.data(), &bmfHeader, sizeof(bmfHeader));
+	std::memcpy(bmp.data() + sizeof(bmfHeader), &bi, sizeof(bi));
+	std::memcpy(bmp.data() + bmfHeader.bfOffBits, lpbitmap, dwBmpSize);
+	result = 0;
 
 	// Clean up.（所有资源统一在 done 释放，正常与出错路径一致）
 done:
-	if (hFile != INVALID_HANDLE_VALUE)
-	{
-		CloseHandle(hFile);
-	}
 	if (lpbitmap)
 	{
 		GlobalUnlock(hDIB);
@@ -241,7 +225,7 @@ done:
 		ReleaseDC(NULL, hdcScreen);
 	}
 
-	return 0;
+	return result;
 }
 static bool fileExists(const wchar_t* path)
 {
@@ -256,7 +240,7 @@ int fullScreenshot()
 	{
 		scale = float(getWidth()) / getScreenW();
 	}
-	//CaptureAnImage(GetDesktopWindow(), scale, L"screenshot.bmp");
+	// 缩放由 screenshot 内部自己算，这里只负责"截全屏 + 确认 png 出来了"
 	screenshot(0, 0, getWidth(), getScreenW());
 	if (not fileExists(L"screenshot.png"))
 	{
@@ -320,19 +304,19 @@ int screenshot(int left, int top, int width, int height)
 		}
 	}
 
-	const wchar_t* temp_file = L"captureqwsx.bmp";
 	const char* out_file = "screenshot.png";
 
-	// 2. 截图
-	CaptureAnImage(GetDesktopWindow(), scale, temp_file);
-
-	if (!fileExists(temp_file)) {
+	// 2. 截图：整屏 BMP 只放在内存里，不再写 captureqwsx.bmp 再读回来
+	std::vector<unsigned char> bmp;
+	if (CaptureToMemory(GetDesktopWindow(), scale, bmp) != 0)
+	{
 		return 1; // 截图失败
 	}
 
-	// 3. 加载图片
+	// 3. 从内存解码（等价于以前的 stbi_load("captureqwsx.bmp", ...)）
 	int img_w, img_h, channels;
-	unsigned char* image = stbi_load("captureqwsx.bmp", &img_w, &img_h, &channels, 0);
+	unsigned char* image = stbi_load_from_memory(
+		bmp.data(), static_cast<int>(bmp.size()), &img_w, &img_h, &channels, 0);
 
 	if (!image) {
 		return 2; // 加载图片失败
@@ -344,11 +328,6 @@ int screenshot(int left, int top, int width, int height)
 
 	// 释放源图片内存 (stb_image 分配的必须用 stbi_image_free)
 	stbi_image_free(image);
-	bool success=DeleteFileW(temp_file);
-	if (!success)
-	{
-		std::cout<<"失败" << GetLastError() << std::endl;;
-	}
 
 	if (!cropped_opt.has_value()) {
 		// 裁剪失败 (可能是区域越界)
