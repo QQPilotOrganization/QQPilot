@@ -29,7 +29,7 @@ pub(crate) fn ms_output(milliseconds: u64) {
         print!(
             "{}|{}{}|",
             seconds - i - 1,
-            "0".repeat(elapsed.into()),
+            "█".repeat(elapsed.into()),
             " ".repeat(remain.into())
         );
         let _ = std::io::stdout().flush();
