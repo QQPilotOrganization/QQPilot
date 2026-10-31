@@ -128,5 +128,6 @@
     "option.rest.schedule": "休息时间表",
     "option.rest.schedule.hint": "在设定时间内不工作,以本地时间小时为单位,用英文逗号分隔,例如:1,2,3,4,5;None为不启用",
     "info.rest.schedule": "处于休息时间表",
-    "option.simulate.output.speed": "模拟输出速度"
+    "option.simulate.output.speed": "模拟输出速度",
+    "option.tab.after.match.template.failed": "模板匹配失败后使用tab选择复制按钮"
 }

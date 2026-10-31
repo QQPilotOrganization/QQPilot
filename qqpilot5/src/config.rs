@@ -92,6 +92,7 @@ pub struct Config {
     pub max_output: u16,
     pub simulate_output_speed:bool,
     pub rest_schedule:String,
+    pub tab_after_match_template_failed:bool
 }
 
 impl Default for Config {
@@ -123,7 +124,8 @@ impl Default for Config {
             mouse_smooth_move: false,
             max_output: 500,
             simulate_output_speed:false,
-            rest_schedule:String::from("0,1,2,3,4,5,6,7,8")
+            rest_schedule:String::from("0,1,2,3,4,5,6,7,8"),
+            tab_after_match_template_failed:false
         }
     }
 }
@@ -180,7 +182,8 @@ impl Config {
             mouse_smooth_move: get_bool(&ini, "mouse_smooth_move", d.mouse_smooth_move),
             max_output: get_u16(&ini, "max_output", d.max_output).min(500),
             simulate_output_speed:get_bool(&ini, "simulate_output_speed", d.simulate_output_speed),
-            rest_schedule:get_str(&ini, "rest_schedule", &d.rest_schedule)
+            rest_schedule:get_str(&ini, "rest_schedule", &d.rest_schedule),
+            tab_after_match_template_failed:get_bool(&ini, "tab_after_match_template_failed", d.tab_after_match_template_failed)
         }
     }
 }

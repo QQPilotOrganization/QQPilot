@@ -291,7 +291,7 @@ fn main() {
                         localization::get(&translate, "error.matchtemplate.failed")
                     )
                 });
-        if copy_points.is_empty() {
+        if copy_points.is_empty() && settings.tab_after_match_template_failed {
 
             log::print(localization::get(&translate, "error.matchtemplate.failed"));
             for _ in 0..(settings.scroll * 2) {

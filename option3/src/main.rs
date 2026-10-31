@@ -221,13 +221,6 @@ pub struct SettingsApp {
     #[nwg_control(size: (84, 30), position: (160, 346), flags: "VISIBLE|TAB_STOP|NUMBER")]
     remote_server_timeout: nwg::TextInput,
 
-    #[nwg_control(text: localization::text("option.tab.times"), size: (134, 20), position: (290, 446))]
-    label_tab_times: nwg::Label,
-
-    #[nwg_control(size: (111, 72), position: (433, 437), flags: "VISIBLE|TAB_STOP",
-                  collection: vec!["7".to_string(), "8".to_string()])]
-    tab_times: nwg::ComboBox<String>,
-
     #[nwg_control(text: localization::text("option.rest.schedule"), size: (150, 20), position: (11, 585))]
     label_rest_schedule: nwg::Label,
     #[nwg_control(text: localization::text("option.rest.schedule.hint"), size: (600, 20), position: (11, 620))]
@@ -249,6 +242,16 @@ pub struct SettingsApp {
     #[nwg_control(text: localization::text("option.save"), size: (145, 30), position: (916, 7))]
     #[nwg_events(OnButtonClick: [SettingsApp::save_config])]
     button_save: nwg::Button,
+
+    #[nwg_control(text: localization::text("option.tab.after.match.template.failed"), size: (280,30), position: (550, 486), flags: "VISIBLE|TAB_STOP")]
+    tab_after_match_template_failed: nwg::CheckBox,
+    
+    #[nwg_control(text: localization::text("option.tab.times"), size: (134, 20), position: (850, 486))]
+    label_tab_times: nwg::Label,
+
+    #[nwg_control(size: (111, 72), position: (950,  486), flags: "VISIBLE|TAB_STOP",
+                  collection: vec!["7".to_string(), "8".to_string()])]
+    tab_times: nwg::ComboBox<String>,
 }
 
 impl SettingsApp {
@@ -350,7 +353,8 @@ impl SettingsApp {
             .set_pos(settings.send_image_possibility.clamp(0, 100) as usize);
 
         self.rest_schedule.set_text(&settings.rest_schedule);
-        self.simulate_output_speed.set_check_state(check_state(settings.simulate_output_speed));
+        self.simulate_output_speed
+            .set_check_state(check_state(settings.simulate_output_speed));
         self.refresh_possibility_label();
 
         // Win32 下拉框的显示区高度由字体决定，不会理会 builder 里给的高度，
@@ -380,6 +384,7 @@ impl SettingsApp {
         self.mouse_smooth_move
             .set_check_state(check_state(settings.mouse_smooth_move));
         self.max_output.set_text(&settings.max_output.to_string());
+        self.tab_after_match_template_failed.set_check_state(check_state(settings.tab_after_match_template_failed));
     }
 
     /// 对应 `Form1.SaveConfig`：把界面上的值攒成 [`Settings`] 并写回文件。
@@ -420,6 +425,7 @@ impl SettingsApp {
             rest_schedule: read(&self.rest_schedule, Settings::default().rest_schedule),
             simulate_output_speed: self.simulate_output_speed.check_state()
                 == nwg::CheckBoxState::Checked,
+            tab_after_match_template_failed:self.tab_after_match_template_failed.check_state()==nwg::CheckBoxState::Checked,
         };
 
         if let Err(e) = settings.save(&self.system_text.text()) {
@@ -435,7 +441,7 @@ impl SettingsApp {
             &self.model_name,
             &self.api_key,
             &self.server_url,
-            &self.rest_schedule
+            &self.rest_schedule,
         ] {
             if input.text().trim().is_empty() {
                 input.set_text(NULLSTR);

@@ -52,6 +52,7 @@ pub struct Settings {
     pub max_output: u16,
     pub simulate_output_speed: bool,
     pub rest_schedule: String,
+    pub tab_after_match_template_failed:bool,
 }
 
 impl Default for Settings {
@@ -81,6 +82,7 @@ impl Default for Settings {
             max_output: 500,
             simulate_output_speed: false,
             rest_schedule: String::from("0,1,2,3,4,5,6,7,8"),
+            tab_after_match_template_failed:false,
         }
     }
 }
@@ -144,6 +146,7 @@ impl Settings {
             max_output: get_u16("max_output", 500).min(500),
             simulate_output_speed: get_bool("simulate_output_speed", d.simulate_output_speed),
             rest_schedule: get_str("rest_schedule", &d.rest_schedule),
+            tab_after_match_template_failed:get_bool("tab_after_match_template_failed",d.tab_after_match_template_failed),
         }
     }
 
@@ -172,7 +175,7 @@ impl Settings {
             ));
         }
 
-        let values: [(&str, String); 23] = [
+        let values: [(&str, String); 24] = [
             ("version", self.version.clone()),
             ("name", self.name.clone()),
             ("width", self.width.to_string()),
@@ -202,6 +205,7 @@ impl Settings {
             ("max_output", self.max_output.to_string()),
             ("simulate_output_speed",bool_text(self.simulate_output_speed)),
             ("rest_schedule",self.rest_schedule.to_string()),
+            ("tab_after_match_template_failed",bool_text(self.tab_after_match_template_failed))
 
         ];
         for (key, value) in values {
