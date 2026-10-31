@@ -1,4 +1,4 @@
-﻿// dllmain.cpp : 定义 DLL 应用程序的入口点。
+// dllmain.cpp : 定义 DLL 应用程序的入口点。
 #include "pch.h"
 #include "dllmain.h"
 #include "inicpp.hpp"
@@ -291,6 +291,161 @@ std::optional<unsigned char*> cropImage(
 	return destData;
 }
 
+// 只抓需要的那一块，直接写成 png。
+//
+// 老路是"整屏抓图 -> 整屏 GetDIBits -> 拼 BMP -> stb 解码 -> 裁剪 -> 写 png"，
+// 中间那一大坨（2560x1440 约 14MB 的拷贝 + 解码）在小块截图时纯属浪费。
+// 这里只对目标矩形做 BitBlt/GetDIBits，再按 stb 读 32 位 BMP 的规则做
+// BGRA -> RGBA 和行翻转（BMP 是自下而上），所以输出和走老路逐像素一致。
+//
+// 返回 0 成功、3 区域越界、4 写文件失败、-1 表示 GDI 这步没走通（交给老路）。
+static int ScreenshotRegionToPng(int left, int top, int width, int height, const char* out_file)
+{
+	HWND hWnd = GetDesktopWindow();
+	HDC hdcScreen = GetDC(NULL);
+	HDC hdcWindow = GetDC(hWnd);
+	HDC hdcMemDC = CreateCompatibleDC(hdcWindow);
+	HBITMAP hbmScreen = NULL;
+	HBITMAP hbmOld = NULL;
+	HANDLE hDIB = NULL;
+	char* lpbitmap = NULL;
+
+	auto cleanup = [&]()
+	{
+		if (lpbitmap)
+		{
+			GlobalUnlock(hDIB);
+		}
+		if (hDIB)
+		{
+			GlobalFree(hDIB);
+		}
+		if (hbmScreen)
+		{
+			if (hdcMemDC && hbmOld)
+			{
+				SelectObject(hdcMemDC, hbmOld);
+			}
+			DeleteObject(hbmScreen);
+		}
+		if (hdcMemDC)
+		{
+			DeleteDC(hdcMemDC);
+		}
+		if (hdcWindow)
+		{
+			ReleaseDC(hWnd, hdcWindow);
+		}
+		if (hdcScreen)
+		{
+			ReleaseDC(NULL, hdcScreen);
+		}
+	};
+
+	// 边界处理和 cropImage + 外层那两段完全一样
+	RECT rcClient{};
+	GetClientRect(hWnd, &rcClient);
+	const int img_w = static_cast<int>(rcClient.right - rcClient.left);
+	const int img_h = static_cast<int>(rcClient.bottom - rcClient.top);
+
+	if (left < 0) left = 0;
+	if (top < 0) top = 0;
+	if (left >= img_w || top >= img_h)
+	{
+		cleanup();
+		return 3;
+	}
+	if (left + width > img_w) width = img_w - left;
+	if (top + height > img_h) height = img_h - top;
+	if (width <= 0 || height <= 0)
+	{
+		cleanup();
+		return 3;
+	}
+
+	if (!hdcMemDC)
+	{
+		cleanup();
+		return -1;
+	}
+
+	hbmScreen = CreateCompatibleBitmap(hdcWindow, width, height);
+	if (!hbmScreen)
+	{
+		cleanup();
+		return -1;
+	}
+	hbmOld = (HBITMAP)SelectObject(hdcMemDC, hbmScreen);
+
+	// 从**屏幕 DC** 直接拷这一块：老路是先把整屏 StretchBlt 到桌面窗口 DC 再 BitBlt，
+	// 两步在 1:1 时等价，但从桌面窗口 DC 取会漏掉分层窗口（比如置顶的半透明浮窗），
+	// 直接从屏幕 DC 取才是"眼睛看到的"。
+	if (!BitBlt(hdcMemDC, 0, 0, width, height, hdcScreen, left, top, SRCCOPY))
+	{
+		cleanup();
+		return -1;
+	}
+
+	BITMAPINFOHEADER bi{};
+	bi.biSize = sizeof(BITMAPINFOHEADER);
+	bi.biWidth = width;
+	bi.biHeight = height; // 正数 = 自下而上，和以前 GetDIBits 拿到的行序一致
+	bi.biPlanes = 1;
+	bi.biBitCount = 32;
+	bi.biCompression = BI_RGB;
+
+	const DWORD dwBmpSize = static_cast<DWORD>(width) * static_cast<DWORD>(height) * 4;
+	hDIB = GlobalAlloc(GHND, dwBmpSize);
+	lpbitmap = static_cast<char*>(GlobalLock(hDIB));
+	if (!lpbitmap)
+	{
+		cleanup();
+		return -1;
+	}
+	if (GetDIBits(hdcWindow, hbmScreen, 0, static_cast<UINT>(height), lpbitmap,
+		reinterpret_cast<BITMAPINFO*>(&bi), DIB_RGB_COLORS) == 0)
+	{
+		cleanup();
+		return -1;
+	}
+
+	// stb 读 32 位 BI_RGB 的 BMP 时是 4 通道，而且"整张图 alpha 全 0"会把 alpha 补成 255。
+	std::vector<unsigned char> rgba(static_cast<size_t>(width) * height * 4);
+	const unsigned char* src = reinterpret_cast<const unsigned char*>(lpbitmap);
+	bool any_alpha = false;
+	for (int y = 0; y < height; ++y)
+	{
+		const unsigned char* src_row = src + static_cast<size_t>(height - 1 - y) * width * 4;
+		unsigned char* dst_row = rgba.data() + static_cast<size_t>(y) * width * 4;
+		for (int x = 0; x < width; ++x)
+		{
+			const unsigned char b = src_row[x * 4 + 0];
+			const unsigned char g = src_row[x * 4 + 1];
+			const unsigned char r = src_row[x * 4 + 2];
+			const unsigned char a = src_row[x * 4 + 3];
+			if (a != 0)
+			{
+				any_alpha = true;
+			}
+			dst_row[x * 4 + 0] = r;
+			dst_row[x * 4 + 1] = g;
+			dst_row[x * 4 + 2] = b;
+			dst_row[x * 4 + 3] = a;
+		}
+	}
+	if (!any_alpha)
+	{
+		for (size_t i = 3; i < rgba.size(); i += 4)
+		{
+			rgba[i] = 255;
+		}
+	}
+
+	const int ok = stbi_write_png(out_file, width, height, 4, rgba.data(), 0) != 0;
+	cleanup();
+	return ok ? 0 : 4;
+}
+
 extern "C" __declspec(dllexport)
 int screenshot(int left, int top, int width, int height)
 {
@@ -306,14 +461,26 @@ int screenshot(int left, int top, int width, int height)
 
 	const char* out_file = "screenshot.png";
 
-	// 2. 截图：整屏 BMP 只放在内存里，不再写 captureqwsx.bmp 再读回来
+	// 2. 缩放为 1（DPI 感知的调用方都是这种情况）时走快路：
+	//    只抓目标矩形，直接写 png，不经过 BMP。
+	if (scale > 0.999f && scale < 1.001f)
+	{
+		const int fast = ScreenshotRegionToPng(left, top, width, height, out_file);
+		if (fast >= 0)
+		{
+			return fast;
+		}
+	}
+
+	// 3. 缩放不为 1（进程没设 DPI 感知时）：整屏抓图、缩放、再从整屏里裁剪。
+	//    整屏 BMP 只放在内存里，不再写 captureqwsx.bmp 再读回来。
 	std::vector<unsigned char> bmp;
 	if (CaptureToMemory(GetDesktopWindow(), scale, bmp) != 0)
 	{
 		return 1; // 截图失败
 	}
 
-	// 3. 从内存解码（等价于以前的 stbi_load("captureqwsx.bmp", ...)）
+	// 4. 从内存解码（等价于以前的 stbi_load("captureqwsx.bmp", ...)）
 	int img_w, img_h, channels;
 	unsigned char* image = stbi_load_from_memory(
 		bmp.data(), static_cast<int>(bmp.size()), &img_w, &img_h, &channels, 0);
@@ -322,7 +489,7 @@ int screenshot(int left, int top, int width, int height)
 		return 2; // 加载图片失败
 	}
 
-	// 4. 执行裁剪
+	// 5. 执行裁剪
 	// 传入正确的原图尺寸 (img_w, img_h) 和 用户想要的裁剪参数 (left, top, width, height)
 	auto cropped_opt = cropImage(image, img_w, img_h, channels, left, top, width, height);
 
