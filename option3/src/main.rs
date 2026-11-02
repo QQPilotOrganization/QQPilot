@@ -231,10 +231,10 @@ pub struct SettingsApp {
     #[nwg_events(OnTextInput: [SettingsApp::scroll_changed])]
     scroll: nwg::TextInput,
 
-    #[nwg_control(text: localization::text("option.sleep"), size: (150, 22), position: (210, 640))]
+    #[nwg_control(text: localization::text("option.sleep"), size: (180, 22), position: (210, 640))]
     label_sleep: nwg::Label,
 
-    #[nwg_control(text: "", size: (64, 26), position: (364, 638), flags: "VISIBLE|TAB_STOP|NUMBER")]
+    #[nwg_control(text: "", size: (64, 26), position: (384, 638), flags: "VISIBLE|TAB_STOP|NUMBER")]
     sleep: nwg::TextInput,
 
     #[nwg_control(text: localization::text("option.max_output"), size: (110, 22), position: (14, 670))]
@@ -326,7 +326,7 @@ pub struct SettingsApp {
     #[nwg_events(OnButtonClick: [SettingsApp::reset_token_count])]
     button_reset_token: nwg::Button,
 
-    #[nwg_control(text: localization::text("option.tab.after.match.template.failed"), size: (264, 24), position: (250, 700), flags: "VISIBLE|TAB_STOP")]
+    #[nwg_control(text: localization::text("option.tab.after.match.template.failed"), size: (300, 24), position: (250, 710), flags: "VISIBLE|TAB_STOP")]
     tab_after_match_template_failed: nwg::CheckBox,
 }
 
