@@ -61,6 +61,16 @@ pub(crate) fn get(localization: &Translation, src: &str) -> String {
     format!("X{src}")
 }
 
+/// 对增长字符串长度以检测多国语言的翻译是否使得文本框溢出的方法
+#[allow(dead_code)]
+pub(crate) fn get_as_debug(localization: &Translation, src: &str) -> String {
+    if let Some(Value::String(text)) = localization.get(src) {
+        return text.clone()+"ABCDEFGHIJKLMN";
+    }
+    eprintln!("未发现{src}的翻译。");
+    format!("X{src}")
+}
+
 /// 把翻译固化成立即 `&'static str`，供 `#[nwg_control(text: ...)]` 使用。
 ///
 /// 每个 key 只在第一次用到时泄漏一次，key 的数量等于控件数，固定不再增长。
