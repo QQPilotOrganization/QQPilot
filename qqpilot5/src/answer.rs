@@ -360,8 +360,6 @@ impl Answer {
             .body(body.to_string());
 
         if !self.api_key.is_empty()
-            && !self.server_url.contains("localhost")
-            && !self.server_url.contains("127.0.0.1")
         {
             request = request.header("Authorization", format!("Bearer {}", self.api_key));
         }

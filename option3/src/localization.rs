@@ -11,7 +11,10 @@ use serde_json::Value::{self};
 type Translation = Value;
 
 /// 支持的语言。**第一项是兜底语言**，任何找不到的文案都从这里取。
-pub(crate) const LOCALES: [&str; 2] = ["zh-CN", "en-US"];
+///
+/// 现在只有中文一份表（英文表已经删了）；以后要加语言，把名字加进来、
+/// 再放一份同名的 `<locale>.json` 即可，`load()` 会自动按系统语言选。
+pub(crate) const LOCALES: [&str; 1] = ["zh-CN"];
 const FALLBACK_LOCALE: &str = "zh-CN";
 
 /// 当前系统语言对应的翻译。
@@ -123,6 +126,11 @@ mod tests {
     "option.sleep": "发送完消息后等待 (秒):",
     "option.timeout": "远程服务器超时 (秒):",
     "option.max.tokens": "最大 token 数:",
+    "option.max_output": "最大输出字数",
+    "option.rest.schedule": "休息时间表",
+    "option.rest.schedule.hint": "在设定时间内不工作,以本地时间小时为单位,用英文逗号分隔,例如:1,2,3,4,5;None为不启用",
+    "option.simulate.output.speed": "模拟输出速度",
+    "option.tab.after.match.template.failed": "模板匹配失败后使用tab选择复制按钮",
     "option.tab.times": "tab按下次数",
     "option.system.text": "提示文本",
 
@@ -130,15 +138,30 @@ mod tests {
     "option.server.custom": "自定义",
     "option.mouse.smooth": "平滑鼠标移动",
 
+    "option.group.basic": "基本",
+    "option.group.model": "模型与接口",
+    "option.group.media": "图片与消息",
+    "option.group.rhythm": "节奏与输出",
+    "option.group.system": "提示文本",
+    "option.group.plan": "运行计划",
+    "option.group.auto": "自动化",
+    "option.group.status": "状态",
+
+    "option.hint.window.size": "设置QQ窗口的宽高",
+    "option.hint.model": "例如 Qwen/Qwen3-8B",
+    "option.hint.api.key": "sk-****",
+    "option.hint.server": "https://example.com/v1",
+    "option.hint.timeout": "等服务器响应的最长时间",
+    "option.hint.system.text": "模型提示词",
     "option.warning.testconnect.consume": "向填写的服务器发送一次请求，会消耗token，是否继续？",
     "option.testconnect.success.title": "连接成功",
     "option.testconnect.failed.title": "连接失败",
-    "option.testconnect.builtin": "当前是内置模型（不联网），不需要测试连接。",
+    "option.testconnect.builtin": "内置模型不联网，不需要测试连接。",
     "option.testconnect.url": "地址",
     "option.testconnect.reply": "答复",
     "option.testconnect.timeout": "请求超时",
     "option.testconnect.notjson": "响应不是合法的 JSON（地址可能不是 API 根路径）",
-
+    
     "error.config.read": "读取配置失败",
     "error.config.write": "写入配置失败",
     "error.token.reset": "重置计数器失败",
@@ -194,30 +217,28 @@ mod tests {
         });
     }
 
-    /// 每个受支持语言的文件都要存在，而且键集合必须和兜底语言完全一致 ——
-    /// 少一条就会在界面上显示成 `X<key>`，多一条则说明漏了代码引用。
+    /// 兜底语言表要读得出来、不能为空、也不能有条目是空文案。
+    ///
+    /// 以前这里还检查"每个受支持语言的键集合都要一致"；英文表删掉以后只剩一份表，
+    /// 所以改成检查这一份的质量。以后再加语言时，把逐语言对比补回来即可。
     #[test]
-    fn every_locale_has_the_same_keys() {
+    fn fallback_table_is_usable() {
         let _guard = lock();
         write_default_cfg();
 
-        let reference: Vec<String> = match read_locale(FALLBACK_LOCALE) {
-            Some(Value::Object(map)) => map.keys().cloned().collect(),
-            other => panic!("{FALLBACK_LOCALE}.json 不可用: {other:?}"),
+        let Some(Value::Object(map)) = read_locale(FALLBACK_LOCALE) else {
+            panic!("读不到 {FALLBACK_LOCALE}.json");
         };
-        assert!(!reference.is_empty(), "兜底语言表是空的");
-
-        for name in LOCALES {
-            let Some(Value::Object(map)) = read_locale(name) else {
-                panic!("缺少 {name}.json（或它是空的）");
-            };
-            let keys: Vec<String> = map.keys().cloned().collect();
-
-            let missing: Vec<&String> = reference.iter().filter(|k| !keys.contains(k)).collect();
-            let extra: Vec<&String> = keys.iter().filter(|k| !reference.contains(k)).collect();
-            assert!(missing.is_empty(), "{name}.json 少了这些键: {missing:?}");
-            assert!(extra.is_empty(), "{name}.json 多了这些键: {extra:?}");
+        assert!(!map.is_empty(), "兜底语言表是空的");
+        for (key, value) in &map {
+            let text = value
+                .as_str()
+                .unwrap_or_else(|| panic!("{key} 的文案不是字符串"));
+            assert!(!text.trim().is_empty(), "{key} 的文案是空的");
         }
+
+        // 系统语言不认识时也要拿到同一份表，不能让界面变成 `X<key>`。
+        assert_eq!(load_for("xx-XX"), Value::Object(map));
     }
 
     /// 系统语言没被支持（或对应文件是空的）时，必须回退到兜底语言，
