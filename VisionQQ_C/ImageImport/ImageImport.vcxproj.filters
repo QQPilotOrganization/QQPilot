@@ -39,6 +39,9 @@
     <ClInclude Include="findfiles.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="ImageSignature.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ImageImport.cpp">
@@ -51,6 +54,9 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="findTencentFiles.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="ImageSignature.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

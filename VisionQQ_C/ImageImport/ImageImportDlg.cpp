@@ -8,6 +8,7 @@
 #include "ImageImportDlg.h"
 #include "afxdialogex.h"
 #include "findTencentFiles.h"
+#include "ImageSignature.h"
 #include<string>
 #include <afxdlgs.h>
 #include <optional>
@@ -20,7 +21,8 @@
 #include <filesystem>
 #include <ranges>
 #include <cctype>
-std::generator<std::filesystem::path> recursiveFiles(std::filesystem::path path)
+constexpr auto IMAGE_DEST_PATH = L".\\Images\\";
+static std::generator<std::filesystem::path> recursiveFiles(std::filesystem::path path)
 {
 	try
 	{
@@ -40,7 +42,7 @@ std::generator<std::filesystem::path> recursiveFiles(std::filesystem::path path)
 	}
 
 }
-bool hasExtension(std::filesystem::path path, std::wstring_view ext)
+static bool hasExtension(std::filesystem::path path, std::wstring_view ext)
 {
 	if (ext.empty())
 	{
@@ -106,26 +108,30 @@ BOOL CImageImportDlg::OnInitDialog()
 
 	// TODO: 在此添加额外的初始化代码
 	std::optional<std::wstring> tencentFiles = findTencentFiles();
-    if (tencentFiles.has_value())
-    {
+	std::wstring ntDataPath = L"";
+	if (tencentFiles.has_value())
+	{
 		std::vector<std::filesystem::path> folders;
-        listFolders(tencentFiles.value(), folders);
+		listFolders(tencentFiles.value(), folders);
 		for (auto& folder : folders)
 		{
 			if (folderValid(folder))
 			{
 
 				m_folder = (folders[0] / "nt_qq\\nt_data\\Emoji\\emoji-recv").c_str();
-				goto done; 
+				ntDataPath = (folders[0] / "nt_qq\\nt_data\\Emoji\\emoji-recv");
+				goto done;
 			}
 
 		}
+		Log2.SetWindowTextW(L"完毕。");
+		return TRUE;
 	done:
-		std::wstring str= L"找到nt_data文件夹：" + folders[0].wstring() + L"\n";
-		CString str2= str.c_str();
+		std::wstring str = L"找到nt_data文件夹：" + folders[0].wstring() + L"\n";
+		CString str2 = str.c_str();
 		addLog(str2);
-		Value.SetWindowTextW(m_folder);
-    }
+		Value.SetWindowTextW(ntDataPath.c_str());
+	}
 
 
 
@@ -188,31 +194,37 @@ void CImageImportDlg::OnEnChangeFolders()
 
 void CImageImportDlg::addLog(CString& text)
 {
-    //CString LegacyLog;
-    //Log2.GetWindowTextW(LegacyLog);
-    Log2.SetWindowTextW(text);
+	//CString LegacyLog;
+	//Log2.GetWindowTextW(LegacyLog);
+	Log2.SetWindowTextW(text);
 }
 
 void CImageImportDlg::OnBnClickedButton1()
 {
-	CFolderPickerDialog folderDlg;
-	//folderDlg.SetWindowTextW(L"请选择一个文件夹");
+	CFolderPickerDialog folderDialog;
 
-	if (folderDlg.DoModal() == IDOK)
+	//folderDlg.SetWindowTextW(L"请选择一个文件夹");
+	folderDialog.m_ofn.lpstrTitle = L"请选择";
+
+	
+	auto txFile = findTencentFiles();
+	folderDialog.m_ofn.lpstrInitialDir = txFile.has_value() ? txFile.value().c_str() : L"";
+
+	if (folderDialog.DoModal() == IDOK)
 	{
-		CString strFolderPath = folderDlg.GetFolderPath();
+		CString strFolderPath = folderDialog.GetPathName();
 		// 显示或使用路径
 		Value.SetWindowTextW(strFolderPath);
 	}
 }
 void CImageImportDlg::ThcopyFile()
 {
-	auto result = recursiveFiles(m_folder.GetBuffer()) | 
+	auto result = recursiveFiles(m_folder.GetBuffer()) |
 		std::views::filter([this](const std::filesystem::path& p)
 			{
-				if((hasExtension(p, L".png") or hasExtension(p, L".jpg") or hasExtension(p, L".gif")))
+				if ((hasExtension(p, L".png") or hasExtension(p, L".jpg") or hasExtension(p, L".gif")))
 				{
-					CString name = std::wstring(L"正在处理：" + p.filename().wstring()+p.extension().wstring()).c_str();
+					CString name = std::wstring(L"正在处理：" + p.filename().wstring() + p.extension().wstring()).c_str();
 					this->addLog(name);
 					return true;
 				}
@@ -220,66 +232,84 @@ void CImageImportDlg::ThcopyFile()
 			}
 		);
 	int imageCount = 0;
-	int successCount=0;
-	int failCount=0;
-	for (const auto& p : result)
+	int successCount = 0;
+	int failCount = 0;
+	for (const auto& file : result)
 	{
 		wchar_t path[MAX_PATH];
-		wcscpy_s(path, L".\\Images\\");
-		std::wstring name = p.filename().wstring()+p.extension().wstring();
-        wcscat_s(path, name.c_str());
-		path[MAX_PATH-1]='\0';
-        bool success=CopyFile(p.c_str(), path, FALSE);
-		if(success)
+		wcscpy_s(path, IMAGE_DEST_PATH);
+		path[std::wcslen(IMAGE_DEST_PATH)] = '\0';
+		if (not CreateDirectoryW(path, NULL))
+		{
+			if (GetLastError() == ERROR_PATH_NOT_FOUND)
+			{
+				MessageBox(L"一个或多个中间目录不存在", L"错误", MB_OK | MB_ICONERROR);
+			}
+		}
+		//std::wstring realExt=;
+		auto realExt = getRealExtension(file.c_str());
+		std::wstring destFileName = file.stem().wstring();
+		if (realExt.has_value())
+		{
+			destFileName += L"." + realExt.value();
+		}
+		else
+		{
+			destFileName += file.extension().wstring();
+		}
+		wcscat_s(path, destFileName.c_str());
+		path[MAX_PATH - 1] = '\0';
+		bool success = CopyFile(file.c_str(), path, FALSE);
+		if (success)
 		{
 
-			CString name2 = std::wstring(L"成功复制：" + name).c_str();
+			CString name2 = std::wstring(L"成功复制："+file.filename().wstring()+L" -> " + destFileName).c_str();
 			this->addLog(name2);
 			++imageCount;
-            ++successCount;
-		}	
-        else
+			++successCount;
+		}
+		else
 		{
 			DWORD err = GetLastError();
 			CString name2 = (std::wstring(L"复制失败：" + std::to_wstring(err))).c_str();
 
 			this->addLog(name2);
-            ++failCount;
+			++failCount;
 
 		}
-		
+
 
 	}
-	
+
 	Log2.SetWindowText(L"复制完成！");
 	std::wstring log = L"成功复制：" + std::to_wstring(successCount) + L"张，失败：" + std::to_wstring(failCount) + L"张，总共：" + std::to_wstring(imageCount) + L"张";
 	MessageBox(log.c_str(), L"复制完成！", MB_OK | MB_ICONEXCLAMATION);
-	
+
 
 
 }
 void CImageImportDlg::OnBnClickedButton2()
 {
 	// TODO: 在此添加控件通知处理程序代码
-	bool success=CreateDirectory(TEXT(".\\Images"),NULL);
-    if (not success)
-    {
-        DWORD error = GetLastError();
-        if (error != ERROR_ALREADY_EXISTS)
-        {
-            AfxMessageBox(L"无法创建文件夹");
-            return;
-        }
-    }
+	bool success = CreateDirectory(TEXT(".\\Images"), NULL);
+	if (not success)
+	{
+		DWORD error = GetLastError();
+		if (error != ERROR_ALREADY_EXISTS)
+		{
+			AfxMessageBox(L"无法创建文件夹");
+			return;
+		}
+	}
 
 	if (not std::filesystem::exists(m_folder.GetBuffer()))
 	{
 		AfxMessageBox(L"文件夹不存在");
-        return;
+		return;
 	}
 	//this->t = std::thread(&CImageImportDlg::ThcopyFile,this);
 	ThcopyFile();
-	
+
 }
 
 
@@ -291,16 +321,15 @@ void CImageImportDlg::OnStnClickedSe()
 
 void CImageImportDlg::OnBnClickedButton4()
 {
-	wchar_t path[MAX_PATH+10];
+	wchar_t path[MAX_PATH + 10];
 	wcscpy_s(path, L"explorer ");
-    wcscat_s(path, m_folder.GetBuffer());
+	wcscat_s(path, m_folder.GetBuffer());
 
 
 	//system(path);
 }
 
 void CImageImportDlg::OnBnClickedButton3()
-{
-}
-											   
-	// TODO: 在此添加控件通知处理程序代码
+{}
+
+// TODO: 在此添加控件通知处理程序代码

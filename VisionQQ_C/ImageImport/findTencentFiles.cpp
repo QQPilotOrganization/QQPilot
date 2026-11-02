@@ -1,11 +1,11 @@
-#include "pch.h"
+ï»¿#include "pch.h"
 #include "findTencentFiles.h"
 #include <optional>   
 #include <string>
 
 std::optional<std::wstring> findTencentFiles()
 {       
-    //TencentFiles Ò»°ãÔÚÎÄµµÎÄ¼ş¼ĞÖĞ
+    //TencentFiles Ã’Â»Â°Ã£Ã”ÃšÃÃ„ÂµÂµÃÃ„Â¼Ã¾Â¼ÃÃ–Ã
 	wchar_t* path;
 	HRESULT hr = SHGetKnownFolderPath(FOLDERID_Documents, 0, NULL, &path);
     if (not SUCCEEDED(hr))
@@ -13,14 +13,14 @@ std::optional<std::wstring> findTencentFiles()
          return std::nullopt;
     }
     wchar_t tencentPath[MAX_PATH];
-    PathCchCombineEx(tencentPath, MAX_PATH, path, L"TencentFiles", PATHCCH_NONE);
+    PathCchCombineEx(tencentPath, MAX_PATH, path, L"Tencent Files", PATHCCH_NONE);
     if (PathFileExists(tencentPath))
     {
         return (tencentPath);
     }
     return std::nullopt;
 }
-bool _findEveryFiles(const std::wstring& searchPath, std::vector<std::wstring>& files)
+static bool _findEveryFiles(const std::wstring& searchPath, std::vector<std::wstring>& files)
 {
     wchar_t path[MAX_PATH];
     //std::wcscpy(path, searchPath.c_str());
@@ -80,6 +80,7 @@ void listFolders(const std::filesystem::path& path, std::vector<std::filesystem:
 bool folderValid(const std::filesystem::path& path)
 {
     std::filesystem::path tencentPath = path;
-    tencentPath /= L"nt_qq/nt_data/Emoji";
+    tencentPath /= L"nt_data";
+    tencentPath /= L"Emoji";
     return std::filesystem::exists(tencentPath);
 }

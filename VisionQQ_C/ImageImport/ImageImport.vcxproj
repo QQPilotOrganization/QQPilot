@@ -275,6 +275,7 @@
     <ClInclude Include="framework.h" />
     <ClInclude Include="ImageImport.h" />
     <ClInclude Include="ImageImportDlg.h" />
+    <ClInclude Include="ImageSignature.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="targetver.h" />
@@ -283,6 +284,7 @@
     <ClCompile Include="findTencentFiles.cpp" />
     <ClCompile Include="ImageImport.cpp" />
     <ClCompile Include="ImageImportDlg.cpp" />
+    <ClCompile Include="ImageSignature.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">Create</PrecompiledHeader>
