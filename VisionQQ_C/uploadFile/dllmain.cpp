@@ -141,9 +141,7 @@ extern "C" int __declspec(dllexport) upload()
 	GetCurrentDirectory(MAX_PATH, pathwithastar);
 	std::wcscat(pathwithastar, L"\\Images\\*");
 	std::wcsncpy(path, pathwithastar, std::wcslen(pathwithastar) - 1);
-
-	std::wcout << pathwithastar << std::endl;
-	std::wcout << path << std::endl;
+	
 	;
 	std::vector<std::wstring> images;
 
