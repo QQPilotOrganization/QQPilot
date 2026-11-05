@@ -6,7 +6,7 @@
 //!   * 其它 —— OpenAI 兼容的 `{base}/chat/completions`
 
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::{Path};
 use std::time::{Duration, Instant};
 
 use base64::Engine;
