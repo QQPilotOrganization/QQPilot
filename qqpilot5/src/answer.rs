@@ -6,7 +6,7 @@
 //!   * 其它 —— OpenAI 兼容的 `{base}/chat/completions`
 
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 use base64::Engine;
@@ -84,10 +84,15 @@ impl Answer {
 
         let _ = fs::create_dir_all(TEMP_PATH);
 
+        let mut url2: String = server_url;
+        while url2.ends_with('/') {
+            url2.pop();
+        }
+
         Self {
             client,
             model_name: settings.model_name.clone(),
-            server_url,
+            server_url: url2,
             is_vision_model: settings.is_vision_model,
             max_image_count: settings.max_image_count,
             api_key: settings.api_key.clone(),
@@ -359,8 +364,7 @@ impl Answer {
             .header("Content-Type", "application/json; charset=utf-8")
             .body(body.to_string());
 
-        if !self.api_key.is_empty()
-        {
+        if !self.api_key.is_empty() {
             request = request.header("Authorization", format!("Bearer {}", self.api_key));
         }
 
@@ -549,11 +553,12 @@ fn md5_hex(input: &str) -> String {
     let digest = Md5::new().chain_update(input.as_bytes()).finalize();
     digest.iter().map(|byte| format!("{byte:02x}")).collect()
 }
+
 #[cfg(test)]
 mod tests {
     use std::env;
 
-    use super::*;
+use super::*;
 
     /// `Display` 要能安全地打出后端/参数摘要（这里只是别 panic）。
     #[test]
@@ -616,5 +621,14 @@ mod tests {
     #[test]
     fn darken_text() {
         println!("\033[2m<think>\n123123124214\n</think>");
+    }
+
+    #[test]
+    fn remove_slash() {
+        let mut url2: String = String::from("1/////////////////");
+        while url2.ends_with('/') {
+            url2.pop();
+        }
+        assert_eq!(url2,String::from("1"),"?")
     }
 }
