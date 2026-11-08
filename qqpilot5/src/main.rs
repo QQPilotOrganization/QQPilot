@@ -388,7 +388,7 @@ fn main() {
                     localization::get(&translate, "info.uploadimage")
                 ));
                 upload_image_without_send(upload_image_possible);
-                gui_operation::hot_key("ctrl", "enter");
+                send::send_message();
                 sleep::ms(4000);
                 log::print(localization::get(&translate, "info.quitconversation"));
             } else {
@@ -418,6 +418,9 @@ fn main() {
             log::print(localization::get(&translate, "info.uploadgotimage"));
             upload::upload_selected_image(upload_image_possible, image);
             upload::escape();
+            sleep::ms(500);
+            send::send_message();
+            sleep::s(2);
         }
 
         let possibility = rand::random_range(0..100);
@@ -430,7 +433,7 @@ fn main() {
 
         sleep::ms(4000);
         log::print(localization::get(&translate, "info.sentmessage"));
-        gui_operation::hot_key("ctrl", "enter");
+        send::send_message();
         sleep::ms(4000);
         log::print(localization::get(&translate, "info.quitconversation"));
 
@@ -453,6 +456,8 @@ fn main() {
     AUTO_FOCUS_SHOULD_RUN.store(false, Ordering::Relaxed);
     let _ = auto_focus_thread.join();
 }
+
+mod send;
 
 /// 从 exe 目录下的 `Images` 里挑一张图上传。
 fn upload_image_without_send(upload_image_possible: RectI) {

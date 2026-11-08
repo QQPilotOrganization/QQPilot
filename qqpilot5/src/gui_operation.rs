@@ -12,6 +12,7 @@ use crate::localization;
 use crate::log::{self, Color};
 use crate::native;
 use crate::positions::{PointI, RectI};
+use crate::send::send_message;
 use crate::sleep;
 
 // static config:std::sync::OnceLock<config::Config> T;
@@ -175,7 +176,7 @@ pub fn send_text(text: &str, comment_section: RectI) {
         paste_text_to_section(inputs[inputs.len() - 1], comment_section);
         click_center(comment_section);
         thread::sleep(Duration::from_millis(200));
-        hot_key("ctrl", "enter");
+        send_message();
     }
 }
 
