@@ -1,7 +1,6 @@
 // dllmain.cpp : 定义 DLL 应用程序的入口点。
 #include "pch.h"
 #include "dllmain.h"
-#include "inicpp.hpp"
 #include<iostream>
 #include <set>
 #include <vector>
@@ -16,8 +15,6 @@
 //
 // 请使用UTF8+BOM                   
 
-
-using namespace inicpp;
 
 BOOL APIENTRY DllMain(HMODULE hModule,
 	DWORD  ul_reason_for_call,
@@ -529,3 +526,88 @@ int screenshot(int left, int top, int width, int height)
 
 	return 0; // 成功
 }
+#ifdef ScreenshotToBuf
+//请自行释放内存
+extern "C" __declspec(dllexport)
+int screenshotBuf(int left, int top, int width, int height,unsigned char* outBuffer)
+{
+		// 1. 计算缩放比例
+	float scale = 1.0f;
+	if (gethdc()) {
+		// 防止除以零
+		int screenW = getScreenW();
+		if (screenW > 0) {
+			scale = static_cast<float>(getWidth()) / screenW;
+		}
+	}
+
+
+	//    整屏 BMP 只放在内存里，不再写 captureqwsx.bmp 再读回来。
+	std::vector<unsigned char> bmp;
+	if (CaptureToMemory(GetDesktopWindow(), scale, bmp) != 0)
+	{
+		return 1; // 截图失败
+	}
+
+	// 4. 从内存解码（等价于以前的 stbi_load("captureqwsx.bmp", ...)）
+	int img_w, img_h, channels;
+	unsigned char* image = stbi_load_from_memory(
+		bmp.data(), static_cast<int>(bmp.size()), &img_w, &img_h, &channels, 0);
+
+	if (!image) {
+		return 2; // 加载图片失败
+	}
+
+	// 5. 执行裁剪
+	// 传入正确的原图尺寸 (img_w, img_h) 和 用户想要的裁剪参数 (left, top, width, height)
+	auto cropped_opt = cropImage(image, img_w, img_h, channels, left, top, width, height);
+
+	// 释放源图片内存 (stb_image 分配的必须用 stbi_image_free)
+	stbi_image_free(image);
+
+	if (!cropped_opt.has_value()) {
+		// 裁剪失败 (可能是区域越界)
+		return 3;
+	}
+
+	unsigned char* cropped_ptr = cropped_opt.value();
+
+	int final_w = width;
+	int final_h = height;
+
+	// 简单的边界钳制逻辑复现，确保写入尺寸正确
+	if (left < 0) left = 0;
+	if (top < 0) top = 0;
+	if (left + final_w > img_w) final_w = img_w - left;
+	if (top + final_h > img_h) final_h = img_h - top;
+
+	if (final_w <= 0 || final_h <= 0) {
+		delete[] cropped_ptr; // 清理内存
+		return 3;
+	}
+
+	outBuffer = cropped_ptr;
+
+
+	return 0; // 成功
+}
+//请自行释放内存
+extern "C" __declspec(dllexport)
+int fullScreenshotBuf( unsigned char* outBuffer)
+{
+	float scale = 1.0f;
+	if (gethdc())
+	{
+		scale = float(getWidth()) / getScreenW();
+	}
+	;
+	return screenshotBuf(0, 0, getWidth(), getScreenW(),outBuffer);
+}
+extern "C" __declspec(dllexport)
+void freeBuf(unsigned char* buf)
+{
+	free(buf);
+	buf = NULL;
+
+}
+#endif // ScreenshotToBuf

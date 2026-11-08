@@ -9,6 +9,8 @@
 
 extern "C" __declspec(dllexport)
 int screenshot(int left, int top, int width, int height);
+
+extern "C" __declspec(dllexport) int fullScreenshot();
 /*
 对屏幕的(left,top,width,height)位置截图
 	  返回值为1，截图失败
