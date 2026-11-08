@@ -466,8 +466,6 @@ fn upload_image_without_send(upload_image_possible: RectI) {
         .ok()
         .and_then(|path| path.parent().map(|dir| dir.join("Images")))
         .unwrap_or_else(|| PathBuf::from("Images"));
-    log::print(image_dir.display().to_string());
-
     let files: Vec<PathBuf> = if image_dir.exists() {
         fs::read_dir(&image_dir)
             .map(|entries| {
