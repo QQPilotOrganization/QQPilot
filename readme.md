@@ -4,11 +4,16 @@
 <img alt="示例截图" src="./assets/qqpilot.png" width="200" >
 </div>
 
+
+
+
+
+
 [Linux版本](https://github.com/QQPilotOrganization/QQPilotLinux) [Gitee](https://gitee.com/Na2Cr2O7/QQPilotLinux) | [Android](https://github.com/QQPilotOrganization/QQPilotPocketEdition)
 
 
 
-> 使用纯视觉 + 窗口自动化实现 QQ 消息自动回复，**零 API 依赖、零注入、低封号风险**。  
+> 使用纯视觉 + 窗口自动化实现 QQ 消息自动回复，**零 API 依赖、零注入**。  
 
 ###  项目简介
 
@@ -57,6 +62,18 @@
 
 <img alt="zzz" src="./assets/zzz.png" width="200" >
 
+
+---
+
+
+<details>
+<div align="center">
+<img src="documentation/sn.jpg" width="60">
+<div>晚安，SnowLuma</div>
+<div>2026-11-09</div>
+</div>
+
+</details>
 
 
 
