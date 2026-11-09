@@ -381,7 +381,14 @@ fn main() {
 
         let result = result.trim().to_string();
         if result.replace("\n\n", "").is_empty() || result.is_empty() {
-            if settings.with_image && settings.send_image_possibility > 0 {
+            if !images_to_upload.is_empty() {
+                log::warn(format!(
+                    "{},{}",
+                    localization::get(&translate, "warning.notgenerated"),
+                    localization::get(&translate, "info.uploadgotimage")
+                ));
+                upload_got_image(&translate, upload_image_possible, images_to_upload);
+            } else if settings.with_image && settings.send_image_possibility > 0 {
                 log::warn(format!(
                     "{},{}",
                     localization::get(&translate, "warning.notgenerated"),
@@ -398,6 +405,7 @@ fn main() {
                     localization::get(&translate, "info.quitconversation")
                 ));
             }
+
             go_back(
                 settings.scale,
                 chat_button,
@@ -414,14 +422,7 @@ fn main() {
         gui_operation::click_center(comment_section);
         gui_operation::send_text(&result, comment_section);
 
-        for image in &images_to_upload {
-            log::print(localization::get(&translate, "info.uploadgotimage"));
-            upload::upload_selected_image(upload_image_possible, image);
-            upload::escape();
-            sleep::ms(500);
-            send::send_message();
-            sleep::s(2);
-        }
+        upload_got_image(&translate, upload_image_possible, images_to_upload);
 
         let possibility = rand::random_range(0..100);
         // log::print(format!("概率:{possibility}"));
@@ -455,6 +456,21 @@ fn main() {
 
     AUTO_FOCUS_SHOULD_RUN.store(false, Ordering::Relaxed);
     let _ = auto_focus_thread.join();
+}
+
+fn upload_got_image(
+    translate: &serde_json::Value,
+    upload_image_possible: (i32, i32, i32, i32),
+    images_to_upload: Vec<String>,
+) {
+    for image in &images_to_upload {
+        log::print(localization::get(translate, "info.uploadgotimage"));
+        upload::upload_selected_image(upload_image_possible, image);
+        upload::escape();
+        sleep::ms(500);
+        send::send_message();
+        sleep::s(2);
+    }
 }
 
 mod send;
