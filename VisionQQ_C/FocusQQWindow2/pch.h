@@ -14,7 +14,7 @@
 #include <iostream>
 #include <Windows.h>
 #include <tchar.h>
-#include "inicpp.hpp"
+#include "..\common\inicpp.hpp"
 #include<vector>
 #include<memory>
 #include<string_view>

@@ -1,4 +1,4 @@
-﻿/*
+/*
  * MIT License
  *
  * Copyright (c) 2023 dujingning <djn2019x@163.com> <https://github.com/dujingning/inicpp.git>
@@ -213,9 +213,9 @@ namespace inicpp
 				_section->parent()->parent()->set(_sectionName, _keyName, value);
 			}
 		}
-	public:
-			std::string &_value;
+
 	private:
+		std::string &_value;
 
 		std::string _sectionName, _keyName;
 		parentHelper *_section = nullptr;

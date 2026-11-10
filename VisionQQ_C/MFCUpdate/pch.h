@@ -9,7 +9,7 @@
 
 // 添加要在此处预编译的标头
 #include "framework.h"
-#include "inicpp.hpp"
+#include "../common/inicpp.hpp"
 #include <memory>
 #include <utility>
 

@@ -208,9 +208,6 @@
   <ItemGroup>
     <ClCompile Include="InfoRunning2.cpp" />
   </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="json.hpp" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

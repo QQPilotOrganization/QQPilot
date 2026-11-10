@@ -179,7 +179,7 @@
     <ClCompile Include="ScaleToINI.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="inicpp.hpp" />
+    <ClInclude Include="..\common\inicpp.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

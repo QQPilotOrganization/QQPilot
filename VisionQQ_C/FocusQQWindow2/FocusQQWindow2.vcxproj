@@ -201,8 +201,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\common\inicpp.hpp" />
     <ClInclude Include="framework.h" />
-    <ClInclude Include="inicpp.hpp" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <ItemGroup>
