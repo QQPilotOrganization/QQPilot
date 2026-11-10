@@ -10,11 +10,42 @@
 
             html {
                 background-color: #111;
-                color: #ddd;
+                color: #eee;
 
+            }
+
+
+            button {
+                background-color: #222;
+                border: 2px solid #444;
+                transition: all 0.2s ease-in-out;
+                color: #eee;
+
+                &:hover {
+                    background-color: #333;
+                    scale: 0.95;
+
+                }
             }
         }
 
+        @media (prefers-color-scheme: light) {
+            button {
+                background-color: #eee;
+                border: 2px solid #ccc;
+                transition: all 0.2s ease-in-out;
+
+                &:hover {
+                    background-color: #bbb;
+                    scale: 0.95;
+
+                }
+            }
+        }
+
+        * {
+            transition: all 0.1s ease;
+        }
 
         body {
             width: 100vw;
@@ -29,33 +60,52 @@
         .container {
             display: flex;
             place-items: center;
+
         }
-        button
-        {
-            padding:1em 2em;
+
+        @media (orientation: landscape) {
+            .container {
+                flex-direction: row;
+
+            }
+
+            #icon {
+                width: min(40vw, 400px);
+            }
+        }
+
+        @media (orientation: portrait) {
+            .container {
+                flex-direction: column;
+            }
+            
+            #icon {
+                width: min(80vw, 400px);
+            }
+        }
+
+        button {
+            padding: 1em 2em;
             margin-top: 1em;
             margin-right: 1em;
             /* border-style: ; */
-            
-            background-color: #eee;
-            border:  2px solid #ccc;
-            transition: all 0.2s ease-in-out;
-            &:hover
-            {
-                background-color: #bbb;
-                scale: 0.95;
 
-            }
+
         }
-        
-        a
-        {
+
+
+
+        a {
             outline: none;
             color: inherit;
         }
-        .hide
-        {
+
+        .hide {
             display: none;
+        }
+        .content
+        {
+            margin: 1em;
         }
     </style>
 </head>
@@ -63,24 +113,24 @@
 <body>
     <div class="container">
         <div align="center">
-            <img src="assets/qqpilot.png">
+            <img id="icon" src="assets/qqpilot.png">
         </div>
         <div class="content">
             <h1>QQPilot</h1>
             <div>使用纯图像识别技术实现 QQ 消息自动回复，极大降低封号风险。</div>
             <button onclick="document.querySelector('#gh').click() ">
-                    Github
+                Github
             </button>
             <button onclick="document.querySelector('#rel').click()">
                 releases
-               
+
             </button>
         </div>
     </div>
     <a href="https://github.com/Na2Cr2O7/QQPilot/tree/main" class="hide" id="gh">
-                   
+
     </a>
-     <a href="https://github.com/Na2Cr2O7/QQPilot/releases" class="hide" id="rel"> </a>
+    <a href="https://github.com/Na2Cr2O7/QQPilot/releases" class="hide" id="rel"> </a>
 </body>
 
 </html>
