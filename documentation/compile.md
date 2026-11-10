@@ -13,16 +13,17 @@ rust项目通过`bundle-licenses`得到所有许可证。
 [ImageImport](./VisionQQ_C/ImageImport)|C++|导入图片工具|
 [FocusQQWindow2](./VisionQQ_C/FocusQQWindow2)|C++|置顶QQ窗口并移动到左上角|
 [InfoRunning2](./VisionQQ_C/InfoRunning2)|C++|右下角显示运行时浮窗|
-InputEvent|C++|鼠标键盘模拟|
-MFCLauncher|C++|菜单界面|
-MFCUpdate|C++|升级助手，弃用|
-ScaleToINI|C++|系统缩放写入配置文件|
-ScreenCapture|C++|截图与裁剪图片|
-uploadFile|C++|寻找Windows上传窗口并上传图片|
-uploadImage2|C++|复制图片粘贴到对话框，不支持动图|
-Vision|C++|颜色查找与模板匹配  ~~时间换空间~~ |
-VisionII|C++|未启用的裁剪图片dll|
-**UploadFiles**|C++|**使用cli上传文件，模拟点击上传文件按钮并上传。应与具有电脑操控权限的Agent使用。目前不附带在正式版中。**|
+[InputEvent](./VisionQQ_C/InputEvent)|C++|鼠标键盘模拟|
+[MFCLauncher](./VisionQQ_C/MFCLauncher)|C++|菜单界面|
+[MFCUpdate](./VisionQQ_C/MFCUpdate)|C++|升级助手，弃用|
+[ScaleToINI](./VisionQQ_C/ScaleToINI)|C++|系统缩放写入配置文件|
+[ScreenCapture](./VisionQQ_C/ScreenCapture)|C++|截图与裁剪图片|
+[uploadFile](./VisionQQ_C/uploadFile)|C++|寻找Windows上传窗口并上传图片|
+[uploadImage2](./VisionQQ_C/uploadImage2)|C++|复制图片粘贴到对话框，不支持动图|
+[Vision](./VisionQQ_C/Vision)|C++|颜色查找与模板匹配  ~~时间换空间~~ |
+[VisionII](./VisionQQ_C/VisionII)|C++|未启用的裁剪图片dll|
+[**UploadFiles**](./VisionQQ_C/UploadFiles)|C++|**使用cli上传文件，模拟点击上传文件按钮并上传。应与具有电脑操控权限的Agent使用。目前不附带在正式版中。**|
+[Sauce](./VisionQQ_C/Sauce)|C++|**文件调味料工具用于在文件后增加一串数据用于规避部分程序对于散列值的检测。目前不附带在正式版中。**|
 
 rust项目可以使用`buildAll.cmd`一次性编译x64和arm64的程序。
 

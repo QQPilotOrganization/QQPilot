@@ -27,6 +27,10 @@
     <BuildType Solution="release2|*" Project="Release" />
     <Platform Solution="Debug|ARM64" Project="x64" />
   </Project>
+  <Project Path="Sauce/Sauce.vcxproj">
+    <BuildType Solution="release2|*" Project="Release" />
+    <Platform Solution="*|ARM64" Project="x64" />
+  </Project>
   <Project Path="ScaleToINI/ScaleToINI.vcxproj" Id="0c76a433-d76d-456b-9b4f-d24f05845967">
     <BuildType Solution="release2|*" Project="Release" />
   </Project>
