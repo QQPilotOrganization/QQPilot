@@ -3,7 +3,6 @@
 //! C# 用 `Console.ForegroundColor` / `Console.ResetColor()`；这里直接调
 //! Win32 `SetConsoleTextAttribute`，保持同样的语义（含"每次输出后自动恢复默认色"）。
 
-use std::fs::OpenOptions;
 use std::io::Write;
 use std::sync::OnceLock;
 
@@ -12,6 +11,19 @@ use windows_sys::Win32::System::Console::{
     CONSOLE_SCREEN_BUFFER_INFO, GetConsoleScreenBufferInfo, GetStdHandle, STD_OUTPUT_HANDLE,
     SetConsoleOutputCP, SetConsoleTextAttribute,
 };
+
+use file_rotate::{ContentLimit, FileRotate, compression::Compression, suffix::AppendCount};
+use std::sync::{LazyLock, Mutex};
+
+static LOG: LazyLock<Mutex<FileRotate<AppendCount>>> = LazyLock::new(|| {
+    Mutex::new(FileRotate::new(
+        "log.txt",
+        AppendCount::new(1),
+        ContentLimit::Bytes(512 * 1024),
+        Compression::None,
+        None,
+    ))
+});
 
 use chrono::Local;
 
@@ -133,8 +145,7 @@ pub fn error(message: impl AsRef<str>) {
     print_with(message, Level::Error);
 }
 
-pub fn debug(message: impl AsRef<str>)
-{
+pub fn debug(message: impl AsRef<str>) {
     print_with(message, Level::Debug);
 }
 pub fn print_with(message: impl AsRef<str>, level: Level) {
@@ -142,11 +153,10 @@ pub fn print_with(message: impl AsRef<str>, level: Level) {
     let mut output = format!("[{timestamp}]{}", message.as_ref());
 
     match level {
-        Level::Debug=>
-        {
+        Level::Debug => {
             output = format!("[DEBUG]{output}");
         }
-        Level::Normal   => {}
+        Level::Normal => {}
         Level::Warn => {
             output = format!("[WARN]{output}");
             set_color(Color::Yellow);
@@ -156,15 +166,36 @@ pub fn print_with(message: impl AsRef<str>, level: Level) {
             set_color(Color::Red);
         }
     }
-    if let Ok(mut file) = OpenOptions::new().create(true).append(true).open("log.txt") {
-        let _ = writeln!(file, "{output}");
+    // if let Ok(mut file) = OpenOptions::new().create(true).append(true).open("log.txt") {
+    //     let _ = writeln!(file, "{output}");
+    // }
+    let mut f = LOG.lock().unwrap();
+    if let Err(e) = writeln!(f, "{output}") {
+        eprintln!("Log:{e}");
     }
-    if level==Level::Debug && !cfg!(debug_assertions)
-    {
+    if level == Level::Debug && !cfg!(debug_assertions) {
         return;
     }
     println!("{output}");
 
-
     reset();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn write_and_remove_old_file() {
+        let mut f = LOG.lock().unwrap();
+        std::fs::remove_file("log.txt").unwrap_or(());
+        for o in 0..10000 {
+            if let Err(e) = write!(f, "{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}") {
+                eprintln!("Log:{e}");
+            }
+        } 
+        //理所应当地存在两个文件
+        std::fs::remove_file("log.txt").unwrap();
+        std::fs::remove_file("log.txt.1").unwrap();
+    }
 }
