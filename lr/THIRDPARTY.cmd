@@ -1,0 +1,1 @@
+cargo bundle-licenses --format yaml --output THIRDPARTYlr.yml

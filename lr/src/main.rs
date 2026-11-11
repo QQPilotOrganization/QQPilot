@@ -23,9 +23,9 @@ use config::Config;
 use ocr::{Bounds, Document, Ocr, Region};
 
 /// 聊天名字的绝对区域（1280x720 基准下的像素）。
-const CHAT_NAME_BBOX_POSSIBLE_SIZE: (u32, u32, u32, u32) = (237,46,534,40);
+const CHAT_NAME_BBOX_POSSIBLE_SIZE: (u32, u32, u32, u32) = (237, 46, 534, 40);
 /// 上面那组绝对坐标对应的基准分辨率。
-const DEFAULT_SIZE: (u32, u32) = (1280,720);
+const DEFAULT_SIZE: (u32, u32) = (1280, 720);
 
 /// 截下来的图默认存到这里（和 ScreenCapture.dll 用的是同一个名字）。
 const DEFAULT_SCREENSHOT: &str = "screenshot.png";
@@ -99,27 +99,37 @@ fn print_usage() {
         "lr —— 用 Windows 自带的 OCR 读文字\n\
          \n\
          用法:\n\
-         \x20 lr [选项]            先截全屏图，再识别聊天名字那一块\n\
+         \x20 lr [选项]            截屏后识别聊天名称\n\
          \x20 lr [选项] <目录>     识别目录里所有图片（png/jpg/bmp/gif/tif/webp）\n\
          \x20 lr [选项] <图片>     识别单张图片\n\
          \n\
          选项:\n\
+         \x20 -h, --help            显示帮助\n\
          \x20 -j, --json            输出详细 JSON（每行、每个词的坐标）\n\
          \x20 -o, --output <文件>   写到文件而不是标准输出\n\
          \x20     --save <文件>     截图存到哪里（默认 ./screenshot.png）\n\
          \x20     --no-save         不保存截图\n\
-         \x20     --image <文件>    不截图，直接读这个文件（调试用）\n\
          \x20 -s, --show-languages  列出系统可用的 OCR 语言后退出\n\
-         \x20 -l, --language <语言> 指定 OCR 语言（默认跟随系统，例如 zh-Hans-CN）\n\
+        \x20 -l, --language <语言> 指定 OCR 语言（默认跟随系统，例如 zh-Hans-CN)
+        "
+
+    );
+    if cfg!(debug_assertions) {
+        println!("[DEBUG]");
+        println!(
+        "\x20     --image <文件>    不截图，直接读这个文件（调试用）\n\
          \x20 -c, --config <文件>   配置文件（默认 ./config.ini）\n\
          \x20     --bbox X,Y,W,H   手动指定裁剪区域（原图像素，调参用）\n\
-         \x20     --upscale N      手动指定放大倍数（1..8，调参用）\n\
-         \x20 -h, --help            显示这段帮助\n\
-         \n\
-         例子:\n\
-         \x20 lr                     截屏 + 只打印聊天名字\n\
-         \x20 lr -j -o name.json     截屏 + 把聊天名字和每个字的坐标写成 JSON\n\
-         \x20 lr --no-save           截屏但不落盘\n\
+         \x20     --upscale N      手动指定放大倍数（1~8，调参用）"
+        );
+    }
+
+    println!(
+        "例如:\n\
+         \x20 lr                     截屏 + 只打印聊天名称\n\
+         \x20 lr>o.txt               截屏 + 保存聊天名称\n\
+         \x20 lr -j -o name.json     截屏 + 把聊天名称和每个字的坐标写成 JSON\n\
+         \x20 lr --no-save           截屏不保存\n\
          \x20 lr screenshots/        批量识别整个目录\n\
          \x20 lr -l en-US a.png      指定英文识别单张图"
     );
@@ -143,10 +153,10 @@ fn parse_args(args: impl Iterator<Item = String>) -> Result<Options, String> {
             "-s" | "--show-languages" => options.show_languages = true,
             "-o" | "--output" => options.output = Some(PathBuf::from(value("-o")?)),
             "-l" | "--language" => options.language = Some(value("-l")?),
-            "-c" | "--config" => options.config = Some(PathBuf::from(value("-c")?)),
-            "--image" => options.image = Some(PathBuf::from(value("--image")?)),
             "--save" => options.save_screenshot = Some(PathBuf::from(value("--save")?)),
             "--no-save" => options.save_screenshot = None,
+            "--image" => options.image = Some(PathBuf::from(value("--image")?)),
+            "-c" | "--config" => options.config = Some(PathBuf::from(value("-c")?)),
             "--bbox" => {
                 let text = value("--bbox")?;
                 options.bbox = Some(parse_region(&text)?);
@@ -158,7 +168,7 @@ fn parse_args(args: impl Iterator<Item = String>) -> Result<Options, String> {
                     .parse::<u32>()
                     .map_err(|_| format!("--upscale 要一个整数，收到的是 {text:?}"))?;
                 if factor == 0 || factor > 8 {
-                    return Err("--upscale 的取值范围是 1..=8".to_string());
+                    return Err("--upscale 的取值范围是 1~8".to_string());
                 }
                 options.upscale = Some(factor);
             }
@@ -202,13 +212,16 @@ fn chat_name_region(config: &Config) -> Region {
     let (width, height) = config.pixel_size();
     let (x1, y1, x2, y2) = CHAT_NAME_BBOX_RELATIVE_SIZE;
     let round = |value: f64| value.round() as i32;
-    let temp=Region {
+    let temp = Region {
         x: round(x1 * width),
         y: round(y1 * height),
         width: round((x2) * width),
         height: round((y2) * height),
     };
-    println!("E{},{},{},{}-{}",temp.x,temp.y,temp.width,temp.height,config.scale);
+    println!(
+        "E{},{},{},{}-{}",
+        temp.x, temp.y, temp.width, temp.height, config.scale
+    );
     temp
 }
 
@@ -326,9 +339,7 @@ fn list_languages(options: &Options) -> Result<ExitCode, String> {
         text.push_str(&format!("  {language}{mark}\n"));
     }
     if languages.is_empty() {
-        text.push_str(
-            "  无\n",
-        );
+        text.push_str("  无\n");
     }
     if let Some(wanted) = &options.language {
         let known = languages.iter().any(|language| language == wanted);
@@ -377,10 +388,7 @@ fn run_chat_name(options: &Options, ocr: &Ocr) -> Result<(Value, String), String
     };
 
     if document.text.trim().is_empty() {
-        eprintln!(
-            "提示: 没识别出文字（当前引擎语言 {}）",
-            ocr.language()
-        );
+        eprintln!("提示: 没识别出文字（当前引擎语言 {}）", ocr.language());
     }
 
     let json = json!({

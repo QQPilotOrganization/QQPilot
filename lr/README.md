@@ -9,6 +9,9 @@
 # 不带路径：先截一张全屏图（默认存成 ./screenshot.png），再读"聊天名字"那块
 lr
 
+#获取群聊名称到txt中
+lr>o.txt -l zh-Hans-CN
+
 # 目录：把目录里所有图片整张识别
 lr screenshots\
 
@@ -37,7 +40,7 @@ lr --upscale 2           # 手动指定放大倍数（1..8，调参用）
 
 1. `SetProcessDpiAwarenessContext(PER_MONITOR_AWARE_V2)` —— 不然高分屏上拿到的是逻辑像素；
 2. GDI `BitBlt` 屏幕 → 内存位图 → `GetDIBits`（负高度 = 自上而下）；
-3. 像素直接包成 `SoftwareBitmap` 交给 OCR，**中间不落盘**；
+3. 像素直接包成 `SoftwareBitmap` 交给 OCR；
 4. 需要的话再用 WinRT 的 `BitmapEncoder` 存成 PNG（默认 `screenshot.png`，`--no-save` 关掉）。
 
 ## 坐标怎么来的
@@ -49,8 +52,6 @@ lr --upscale 2           # 手动指定放大倍数（1..8，调参用）
 实际像素 = 相对坐标 × (width × scale, height × scale)
 ```
 
-聊天名字的相对区域来自 `CHAT_NAME_BBOX_POSSIBLE_SIZE`（1927×1080 基准下的
-`(376,86)-(1126,118)`），所以 `scale = 1.5` 时正好是 750×32 的一条。
 
 ## 两个踩过的坑（都写在代码注释里）
 
@@ -75,5 +76,4 @@ lr --upscale 2           # 手动指定放大倍数（1..8，调参用）
 cargo test
 ```
 
-纯逻辑部分（配置解析、区域换算、留白、放大倍数、坐标回映射、参数解析、JSON 形状）
-都有单元测试；真正调 WinRT 的部分只能手工跑（见上面的例子）。
+测试已通过。
