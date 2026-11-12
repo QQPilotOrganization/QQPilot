@@ -24,6 +24,7 @@ rust项目通过`bundle-licenses`得到所有许可证。
 [VisionII](./VisionQQ_C/VisionII)|C++|未启用的裁剪图片dll|
 [**UploadFiles**](./VisionQQ_C/UploadFiles)|C++|**使用cli上传文件，模拟点击上传文件按钮并上传。应与具有电脑操控权限的Agent使用。目前不附带在正式版中。**|
 [Sauce](./VisionQQ_C/Sauce)|C++|**文件调味料工具用于在文件后增加一串数据用于规避部分程序对于散列值的检测。目前不附带在正式版中。**|
+[get_chat_name](./get_chat_name)|rust|**使用WindowsOCR读取当前聊天名称。应与具有电脑操控权限的Agent使用。目前不附带在正式版中。**|
 
 rust项目可以使用`buildAll.cmd`一次性编译x64和arm64的程序。
 

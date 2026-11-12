@@ -32,10 +32,6 @@ const DEFAULT_SCREENSHOT: &str = "screenshot.png";
 /// 默认的配置文件。
 const DEFAULT_CONFIG: &str = "config.ini";
 
-/// 认得的图片扩展名（Windows 的解码器其实更多，这里只列常见的）。
-const IMAGE_EXTENSIONS: [&str; 9] = [
-    "png", "jpg", "jpeg", "bmp", "gif", "tif", "tiff", "webp", "ico",
-];
 
 const fn to_relative_rect(rect: (u32, u32, u32, u32), size: (u32, u32)) -> (f64, f64, f64, f64) {
     (
@@ -96,21 +92,12 @@ impl Options {
 
 fn print_usage() {
     println!(
-        "lr —— 用 Windows 自带的 OCR 读文字\n\
-         \n\
-         用法:\n\
-         \x20 lr [选项]            截屏后识别聊天名称\n\
-         \x20 lr [选项] <目录>     识别目录里所有图片（png/jpg/bmp/gif/tif/webp）\n\
-         \x20 lr [选项] <图片>     识别单张图片\n\
-         \n\
+        "get_chat_name :截图后使用OCR读取聊天名称\n\
          选项:\n\
          \x20 -h, --help            显示帮助\n\
-         \x20 -j, --json            输出详细 JSON（每行、每个词的坐标）\n\
-         \x20 -o, --output <文件>   写到文件而不是标准输出\n\
-         \x20     --save <文件>     截图存到哪里（默认 ./screenshot.png）\n\
-         \x20     --no-save         不保存截图\n\
          \x20 -s, --show-languages  列出系统可用的 OCR 语言后退出\n\
-        \x20 -l, --language <语言> 指定 OCR 语言（默认跟随系统，例如 zh-Hans-CN)
+        \x20 -l, --language <语言> 指定 OCR 语言（默认跟随系统，例如 zh-Hans-CN)\n\
+        \x20 -o, --output <文件>    输出到文件
         "
 
     );
@@ -123,16 +110,6 @@ fn print_usage() {
          \x20     --upscale N      手动指定放大倍数（1~8，调参用）"
         );
     }
-
-    println!(
-        "例如:\n\
-         \x20 lr                     截屏 + 只打印聊天名称\n\
-         \x20 lr>o.txt               截屏 + 保存聊天名称\n\
-         \x20 lr -j -o name.json     截屏 + 把聊天名称和每个字的坐标写成 JSON\n\
-         \x20 lr --no-save           截屏不保存\n\
-         \x20 lr screenshots/        批量识别整个目录\n\
-         \x20 lr -l en-US a.png      指定英文识别单张图"
-    );
 }
 
 fn parse_args(args: impl Iterator<Item = String>) -> Result<Options, String> {
@@ -149,12 +126,9 @@ fn parse_args(args: impl Iterator<Item = String>) -> Result<Options, String> {
                 options.help = true;
                 return Ok(options);
             }
-            "-j" | "--json" => options.json = true,
             "-s" | "--show-languages" => options.show_languages = true,
             "-o" | "--output" => options.output = Some(PathBuf::from(value("-o")?)),
             "-l" | "--language" => options.language = Some(value("-l")?),
-            "--save" => options.save_screenshot = Some(PathBuf::from(value("--save")?)),
-            "--no-save" => options.save_screenshot = None,
             "--image" => options.image = Some(PathBuf::from(value("--image")?)),
             "-c" | "--config" => options.config = Some(PathBuf::from(value("-c")?)),
             "--bbox" => {
@@ -225,40 +199,6 @@ fn chat_name_region(config: &Config) -> Region {
     temp
 }
 
-fn is_image(path: &Path) -> bool {
-    path.extension()
-        .and_then(|extension| extension.to_str())
-        .map(|extension| {
-            let extension = extension.to_ascii_lowercase();
-            IMAGE_EXTENSIONS.contains(&extension.as_str())
-        })
-        .unwrap_or(false)
-}
-
-/// 目录里的图片，按文件名排序。
-fn collect_images(directory: &Path) -> Result<Vec<PathBuf>, String> {
-    let entries = std::fs::read_dir(directory)
-        .map_err(|e| format!("读不了目录 {}: {e}", directory.display()))?;
-
-    let mut images = Vec::new();
-    for entry in entries {
-        let entry = entry.map_err(|e| format!("读目录项失败: {e}"))?;
-        let path = entry.path();
-        if path.is_file() && is_image(&path) {
-            images.push(path);
-        }
-    }
-    images.sort();
-
-    if images.is_empty() {
-        return Err(format!(
-            "目录 {} 里没有图片（认得 {}）",
-            directory.display(),
-            IMAGE_EXTENSIONS.join("/")
-        ));
-    }
-    Ok(images)
-}
 
 fn bounds_json(bounds: &Bounds) -> Value {
     json!({
@@ -422,7 +362,8 @@ fn run_chat_name(options: &Options, ocr: &Ocr) -> Result<(Value, String), String
 
 fn run_images(ocr: &Ocr, path: &Path, upscale: Option<u32>) -> Result<(Value, String), String> {
     let images = if path.is_dir() {
-        collect_images(path)?
+        return Err(format!("{}是目录", path.display()));
+
     } else if path.is_file() {
         vec![path.to_path_buf()]
     } else {
@@ -605,13 +546,6 @@ mod tests {
         assert!(parse_args(["-o"].into_iter().map(String::from)).is_err());
     }
 
-    #[test]
-    fn image_extensions_are_recognised() {
-        assert!(is_image(Path::new("a.PNG")));
-        assert!(is_image(Path::new("dir/b.jpeg")));
-        assert!(!is_image(Path::new("a.txt")));
-        assert!(!is_image(Path::new("no-extension")));
-    }
 
     #[test]
     fn document_json_has_the_expected_shape() {
