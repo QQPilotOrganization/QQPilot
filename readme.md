@@ -62,7 +62,6 @@
 
 本项目(不包括第三方库)采用 [The Unlicense](LICENSE)
 
-<img alt="zzz" src="./assets/zzz.png" width="200" >
 
 <details>
 <summary>联系</summary>
