@@ -77,6 +77,14 @@ SchoolF21@outlook.com
 
 
 <details>
+
+<div align="center">
+<img src="documentation/nc.png" width="60">
+<div>晚安，NapCat</div>
+<div>2026-11-12</div>
+</div>
+<div style="margin:1em"></div>
+
 <div align="center">
 <img src="documentation/sn.jpg" width="60">
 <div>晚安，SnowLuma</div>
