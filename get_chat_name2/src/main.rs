@@ -121,8 +121,20 @@ fn main() {
 
                 eprintln!("{message_json}")
             }
+            // TLS 用系统自带的（Windows 上就是 SChannel），不用 rustls/ring：
+            // ring 要 clang 才能编译，这个项目不想被一个 C 工具链卡住。
+            //
+            // 两个都必须在 Agent 上显式指定：
+            //   * provider 默认还是 Rustls，不改的话 https 会 panic（"feature is not enabled: rustls"）；
+            //   * root_certs 默认是 WebPki（只用 Mozilla 内置根），对 native-tls 会
+            //     "unable to find any user-specified roots"，改成 PlatformVerifier 用系统根证书。
+            let tls = ureq::tls::TlsConfig::builder()
+                .provider(ureq::tls::TlsProvider::NativeTls)
+                .root_certs(ureq::tls::RootCerts::PlatformVerifier)
+                .build();
             let agent: ureq::Agent = ureq::Agent::config_builder()
                 .http_status_as_error(false) // 4xx/5xx 也当成正常响应，才能读到错误 body
+                .tls_config(tls)
                 .build()
                 .into();
             let mut resp = agent
@@ -146,6 +158,7 @@ fn main() {
         }
     }
 
-    // .send_json(&req_body);
-    // let img = ImageReader::open("myimage.png")?.decode()?;
+
 }
+
+//不知道该写什么测试
