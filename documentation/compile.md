@@ -22,7 +22,10 @@ rust项目通过`bundle-licenses`得到所有许可证。
 [uploadImage2](./VisionQQ_C/uploadImage2)|C++|复制图片粘贴到对话框，不支持动图|
 [Vision](./VisionQQ_C/Vision)|C++|颜色查找与模板匹配  ~~时间换空间~~ |
 [**UploadFiles**](./VisionQQ_C/UploadFiles)|C++|**使用cli上传文件，模拟点击上传文件按钮并上传。应与具有电脑操控权限的Agent使用。目前不附带在正式版中。**|
-[get_chat_name](./get_chat_name)|rust|**使用WindowsOCR读取当前聊天名称。应与具有电脑操控权限的Agent使用。目前不附带在正式版中。**|
+[get_chat_name](./get_chat_name)|rust|**使用WindowsOCR（Windows 10 1507+ )读取当前聊天名称。应与具有电脑操控权限的Agent使用。目前不附带在正式版中。**|
+[get_chat_name2](./get_chat_name)|rust|**使用需要配置的远程ChatCompletion API的OCR提供商运行OCR读取当前聊天名称。支持Windows 8.1+。应与具有电脑操控权限的Agent使用。目前不附带在正式版中。**|
+
+>`UploadFiles`、`get_chat_name`和`get_chat_name2`在[AdvancedProgramBuild](./AdvancedProgramBuild)可供下载
 
 rust项目可以使用`buildAll.cmd`一次性编译x64和arm64的程序。
 
