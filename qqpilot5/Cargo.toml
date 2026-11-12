@@ -1,6 +1,6 @@
 [package]
 name = "qqpilot5"
-version = "1.5.20"
+version = "1.5.21"
 edition = "2024"
 
 [dependencies]
