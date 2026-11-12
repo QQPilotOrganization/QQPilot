@@ -1,0 +1,19 @@
+[package]
+name = "get_chat_name2"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+base64 = "0.23.1"
+configparser = "3.3.0"
+image = "0.25.10"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+ureq = { version = "3.5.1", features = ["json"] }
+win-screenshot = "4.0.14"
+[profile.release]
+strip = true
+opt-level = 'z'
+lto = true
+codegen-units = 1
+panic = 'abort'
