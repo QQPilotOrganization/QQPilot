@@ -232,7 +232,9 @@ mod tests {
     "option.group.system": "提示文本",
     "option.group.plan": "运行计划",
     "option.group.auto": "自动化",
-    "option.group.status": "状态"
+    "option.group.status": "状态",
+    "option.api.key.in.env":"环境变量读取(QQPILOT_LLM_API_KEY)",
+    "error.env.notfound.QQPILOT_LLM_API_KEY":"未找到环境变量QQPILOT_LLM_API_KEY(set QQPILOT_LLM_API_KEY=api-key)"
 }"#,
         )
         .expect("不是合法的json");

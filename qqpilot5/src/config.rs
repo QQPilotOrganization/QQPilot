@@ -90,9 +90,10 @@ pub struct Config {
     pub sleep: u32,
     pub mouse_smooth_move: bool,
     pub max_output: u16,
-    pub simulate_output_speed:bool,
-    pub rest_schedule:String,
-    pub tab_after_match_template_failed:bool
+    pub simulate_output_speed: bool,
+    pub rest_schedule: String,
+    pub tab_after_match_template_failed: bool,
+    pub api_key_in_env: bool,
 }
 
 impl Default for Config {
@@ -123,9 +124,10 @@ impl Default for Config {
             sleep: 0,
             mouse_smooth_move: false,
             max_output: 500,
-            simulate_output_speed:false,
-            rest_schedule:String::from("0,1,2,3,4,5,6,7,8"),
-            tab_after_match_template_failed:false
+            simulate_output_speed: false,
+            rest_schedule: String::from("0,1,2,3,4,5,6,7,8"),
+            tab_after_match_template_failed: false,
+            api_key_in_env: false,
         }
     }
 }
@@ -137,8 +139,8 @@ impl Config {
     pub fn load(path: impl AsRef<Path>) -> Self {
         let path = path.as_ref();
         let mut ini = Ini::new();
+        let translate = localization::load();
         if let Err(e) = ini.load(path.to_string_lossy().to_string()) {
-            let translate = localization::load();
             log::print_with(
                 format!(
                     "{} {}: {e}",
@@ -148,8 +150,8 @@ impl Config {
                 Level::Error,
             );
         }
-
         let d = Self::default();
+        let api_key_in_env = get_bool(&ini, "api_key_in_env", d.api_key_in_env);
         Self {
             version: get_str(&ini, "version", &d.version),
             name: get_str(&ini, "name", &d.name),
@@ -168,7 +170,6 @@ impl Config {
                 as usize,
             model_name: get_str(&ini, "modelname", &d.model_name),
             server_url: get_str(&ini, "server_url", &d.server_url),
-            api_key: get_str(&ini, "api_key", &d.api_key),
             remote_server_timeout: get_int(
                 &ini,
                 "remote_server_timeout",
@@ -181,9 +182,22 @@ impl Config {
             sleep: get_u32(&ini, "sleep", d.sleep),
             mouse_smooth_move: get_bool(&ini, "mouse_smooth_move", d.mouse_smooth_move),
             max_output: get_u16(&ini, "max_output", d.max_output).min(500),
-            simulate_output_speed:get_bool(&ini, "simulate_output_speed", d.simulate_output_speed),
-            rest_schedule:get_str(&ini, "rest_schedule", &d.rest_schedule),
-            tab_after_match_template_failed:get_bool(&ini, "tab_after_match_template_failed", d.tab_after_match_template_failed)
+            simulate_output_speed: get_bool(&ini, "simulate_output_speed", d.simulate_output_speed),
+            rest_schedule: get_str(&ini, "rest_schedule", &d.rest_schedule),
+            tab_after_match_template_failed: get_bool(
+                &ini,
+                "tab_after_match_template_failed",
+                d.tab_after_match_template_failed,
+            ),
+            api_key_in_env: api_key_in_env,
+            api_key: if !api_key_in_env {
+                get_str(&ini, "api_key", &d.api_key)
+            } else {
+                std::env::var("QQPILOT_LLM_API_KEY").expect(&localization::get(
+                    &translate,
+                    "error.env.notfound.QQPILOT_LLM_API_KEY",
+                ))
+            },
         }
     }
 }
@@ -440,5 +454,34 @@ mod tests {
         let config = Config::load(&path);
         assert_eq!(config.width, Config::default().width);
         assert_eq!(config.server_url, Config::default().server_url);
+    }
+
+    #[test]
+    fn get_api_key_in_config() {
+        let path = write_temp("qqpilot5-config-ok.ini", "[general]\napi_key=123456789");
+        let config = Config::load(&path);
+        assert_eq!(config.api_key, "123456789");
+    }
+    #[test]
+    fn get_api_key_in_env() {
+        unsafe { std::env::set_var("QQPILOT_LLM_API_KEY", "2358989") };
+        let path = write_temp(
+            "qqpilot5-config-ok.ini",
+            "[general]\napi_key=123456789\napi_key_in_env=true",
+        );
+        let config = Config::load(&path);
+        assert_eq!(config.api_key, "2358989");
+    }
+    #[test]
+    #[should_panic]
+    fn get_api_key_in_env_not_exist() {
+        unsafe { std::env::set_var("QQPILOT_LLM_API_KEY", "2358989") };
+        unsafe { std::env::remove_var("QQPILOT_LLM_API_KEY"); };
+        let path = write_temp(
+            "qqpilot5-config-ok.ini",
+            "[general]\napi_key=123456789\napi_key_in_env=true",
+        );
+         Config::load(&path);
+        
     }
 }

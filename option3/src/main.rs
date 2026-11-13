@@ -48,7 +48,7 @@ const MAX_OUTPUT_MAX: u16 = 500;
 /// `owner` 是属主窗口的句柄数值，`0` 表示没有属主。用 `isize` 而不是 `HWND`，
 /// 是因为连通性测试要把它丢给后台线程：裸指针不是 `Send`，句柄数值是。
 ///
-/// 文本必须自己补 `\0` —— `MessageBoxW` 不认识 Rust 的切片长度，只认结尾的 0。
+/// 文本必须自己补 `\0`
 fn message_box(owner: isize, content: &str, title: &str, u_type: u32) -> i32 {
     let content = wide(content);
     let title = wide(title);
@@ -78,7 +78,6 @@ pub struct SettingsApp {
 
     #[nwg_resource(family: "Microsoft YaHei UI", size: 18, weight: 700)]
     font_heading: nwg::Font,
-    
 
     #[nwg_resource(family: "Microsoft YaHei UI", size: 12)]
     font_hint: nwg::Font,
@@ -152,7 +151,7 @@ pub struct SettingsApp {
     #[nwg_control(text: localization::text("option.api.key"), size: (90, 22), position: (14, 284))]
     label_api_key: nwg::Label,
 
-    #[nwg_control(size: (240, 26), position: (110, 282))]
+    #[nwg_control(size: (240, 26), position: (110, 282), password: Some('·'))]
     #[nwg_events(OnTextInput: [SettingsApp::guard_empty_text])]
     api_key: nwg::TextInput,
 
@@ -160,8 +159,12 @@ pub struct SettingsApp {
     #[nwg_events(OnButtonClick: [SettingsApp::connect_test])]
     button_run_test: nwg::Button,
 
-    #[nwg_control(text: localization::text("option.hint.api.key"), size: (390, 16), position: (110, 310), font: Some(&data.font_hint))]
+    #[nwg_control(text: localization::text("option.hint.api.key"), size: (90, 16), position: (110, 310), font: Some(&data.font_hint))]
     hint_api_key: nwg::Label,
+
+    #[nwg_control(text: localization::text("option.api.key.in.env"), size: (320, 22), position: (210, 310), flags: "VISIBLE|TAB_STOP")]
+    #[nwg_events(OnButtonClick: [SettingsApp::api_key_input_readonly])]
+    api_key_in_env: nwg::CheckBox,
 
     #[nwg_control(text: localization::text("option.extra.json"), size: (160, 26), position: (14, 332))]
     #[nwg_events(OnButtonClick: [SettingsApp::open_extra_json])]
@@ -215,7 +218,6 @@ pub struct SettingsApp {
 
     #[nwg_control(text: localization::text("option.at.detect"), size: (120, 24), position: (140, 556), flags: "VISIBLE|TAB_STOP")]
     at_detect: nwg::CheckBox,
-
 
     // ================= 左列 · 节奏与输出 =================
     #[nwg_control(text: localization::text("option.group.rhythm"), size: (COL1_W, 20), position: (COL1_X, 612), font: Some(&data.font_heading))]
@@ -464,6 +466,8 @@ impl SettingsApp {
         self.max_output.set_text(&settings.max_output.to_string());
         self.tab_after_match_template_failed
             .set_check_state(check_state(settings.tab_after_match_template_failed));
+        self.api_key_in_env
+            .set_check_state(check_state(settings.api_key_in_env));
     }
 
     /// 对应 `Form1.SaveConfig`：把界面上的值攒成 [`Settings`] 并写回文件。
@@ -506,6 +510,7 @@ impl SettingsApp {
                 == nwg::CheckBoxState::Checked,
             tab_after_match_template_failed: self.tab_after_match_template_failed.check_state()
                 == nwg::CheckBoxState::Checked,
+            api_key_in_env: self.api_key_in_env.check_state() == nwg::CheckBoxState::Checked,
         };
 
         if let Err(e) = settings.save(&self.system_text.text()) {
@@ -598,6 +603,10 @@ impl SettingsApp {
         }
     }
 
+    fn api_key_input_readonly(&self) {
+        self.api_key.set_readonly(if self.api_key_in_env.check_state()==nwg::CheckBoxState::Checked {true} else {false});
+        
+    }
     /// 「连通性测试」：确认后按**界面当前**的参数真发一次最小请求。
     ///
     /// 用的是界面上的值而不是 `config.ini` 里的——用户往往是改完地址/模型就想点一下，

@@ -53,6 +53,7 @@ pub struct Settings {
     pub simulate_output_speed: bool,
     pub rest_schedule: String,
     pub tab_after_match_template_failed:bool,
+    pub api_key_in_env:bool
 }
 
 impl Default for Settings {
@@ -83,6 +84,7 @@ impl Default for Settings {
             simulate_output_speed: false,
             rest_schedule: String::from("0,1,2,3,4,5,6,7,8"),
             tab_after_match_template_failed:false,
+            api_key_in_env:false,
         }
     }
 }
@@ -147,6 +149,7 @@ impl Settings {
             simulate_output_speed: get_bool("simulate_output_speed", d.simulate_output_speed),
             rest_schedule: get_str("rest_schedule", &d.rest_schedule),
             tab_after_match_template_failed:get_bool("tab_after_match_template_failed",d.tab_after_match_template_failed),
+            api_key_in_env:get_bool("api_key_in_env",d.api_key_in_env),
         }
     }
 
@@ -175,7 +178,7 @@ impl Settings {
             ));
         }
 
-        let values: [(&str, String); 24] = [
+        let values: [(&str, String); 25] = [
             ("version", self.version.clone()),
             ("name", self.name.clone()),
             ("width", self.width.to_string()),
@@ -205,7 +208,8 @@ impl Settings {
             ("max_output", self.max_output.to_string()),
             ("simulate_output_speed",bool_text(self.simulate_output_speed)),
             ("rest_schedule",self.rest_schedule.to_string()),
-            ("tab_after_match_template_failed",bool_text(self.tab_after_match_template_failed))
+            ("tab_after_match_template_failed",bool_text(self.tab_after_match_template_failed)),
+            ("api_key_in_env",bool_text(self.api_key_in_env))
 
         ];
         for (key, value) in values {
