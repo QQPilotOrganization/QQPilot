@@ -576,7 +576,7 @@ impl SettingsApp {
     }
 
     fn set_server_url_enabled(&self, enabled: bool) {
-        self.server_url.set_enabled(enabled);
+        self.server_url.set_readonly(!enabled);
         self.force_ollama_api.set_enabled(enabled);
     }
 
