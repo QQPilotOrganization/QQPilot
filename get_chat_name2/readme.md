@@ -9,4 +9,4 @@ serverUrl=AnyUrl
 apiKey=Key
 ```
 > [!info]
-> 在[qqpilot-dsh-plugin](https://github.com/QQPilotOrganization/qqpilot-dsh-plugin___)使用时需要修改程序名称为`get_chat_name.exe`否则无法正常识别
+> 在[qqpilot-dsh-plugin](https://github.com/QQPilotOrganization/qqpilot-dsh-plugin___)使用时需要修改程序名称为`get_chat_name.exe`否则无法正常识别。

@@ -47,6 +47,8 @@
 
 [插件](documentation/ext.md)
 
+[能力与限制](documentation/limit.md)
+
 ## 🛡️ 免责声明
 
 不要公开提及该项目求求你了我想活过VLC
