@@ -41,6 +41,12 @@
     <BuildType Solution="release2|*" Project="Release" />
     <Platform Solution="Debug|ARM64" Project="x64" />
   </Project>
+  <Project Path="saltfile/saltfile.vcxproj" Id="3410b2d4-20a3-413e-96a3-09c1e8bce25c">
+    <BuildType Solution="release2|*" Project="Release" />
+    <Platform Solution="Debug|ARM64" Project="x64" />
+    <Platform Solution="release2|ARM64" Project="x64" />
+    <Build Solution="*|x86" Project="false" />
+  </Project>
   <Project Path="ScaleToINI/ScaleToINI.vcxproj" Id="0c76a433-d76d-456b-9b4f-d24f05845967">
     <BuildType Solution="release2|*" Project="Release" />
   </Project>
