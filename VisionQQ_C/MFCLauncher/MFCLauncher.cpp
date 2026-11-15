@@ -49,6 +49,11 @@ BOOL CMFCLauncherApp::InitInstance()
 
 	CWinApp::InitInstance();
 
+	// Clocalization.dll 统一放在 data\ 里，而本程序在发布目录根上：
+	// 工程里对它开了延迟加载，第一次调用 DLL 函数时才真正 LoadLibrary，
+	// 所以先在这里把 DLL 搜索目录指到 data\（DLL 就在旁边时这个函数不做任何事）。
+	clocalization_set_search_path();
+
 
 	// 创建 shell 管理器，以防对话框包含
 	// 任何 shell 树视图控件或 shell 列表视图控件。

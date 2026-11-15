@@ -7,7 +7,6 @@
 #include "MFCLauncher.h"
 #include "MFCLauncherDlg.h"
 #include "afxdialogex.h"
-bool run(const wchar_t* fn);
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
@@ -42,6 +41,26 @@ BEGIN_MESSAGE_MAP(CMFCLauncherDlg, CDialogEx)
 END_MESSAGE_MAP()
 
 
+// ---- 翻译辅助 ----------------------------------------------------------
+
+std::wstring CMFCLauncherDlg::T(const char* key) const
+{
+	if (m_i18n)
+	{
+		return m_i18n->get(key);
+	}
+	return L"X" + clocalization_utf8_to_wide(key);
+}
+
+void CMFCLauncherDlg::SetText(int id, const char* key)
+{
+	if (CWnd* control = GetDlgItem(id))
+	{
+		control->SetWindowTextW(T(key).c_str());
+	}
+}
+
+
 // CMFCLauncherDlg 消息处理程序
 
 BOOL CMFCLauncherDlg::OnInitDialog()
@@ -54,7 +73,18 @@ BOOL CMFCLauncherDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// 设置小图标
 
 	// TODO: 在此添加额外的初始化代码
-	SetCurrentDirectory(TEXT(".\\data\\"));
+	// 用 exe 所在目录拼 data，别依赖启动时的当前目录（快捷方式可能改过它）
+	const std::wstring data_dir = clocalization_exe_directory() + L"\\data";
+	SetCurrentDirectoryW(data_dir.c_str());
+
+	// 翻译表由 Rust 生成（data\zh-CN.json 等），所以在切到 data 之后再读。
+	// 每个对话框自己一份实例。
+	m_i18n = std::make_unique<Clocalization>("auto");
+	SetWindowTextW(T("launcher.title").c_str());
+	SetText(IDOK, "launcher.close");
+	SetText(IDC_BUTTON1, "launcher.start");
+	SetText(IDC_BUTTON3, "launcher.settings");
+	SetText(IDC_BUTTON5, "launcher.image.import");
 
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
@@ -113,7 +143,8 @@ void CMFCLauncherDlg::OnBnClickedButton4()
 	//run(L"Download.exe");
 
 }
-bool run(const wchar_t* fn)
+
+bool CMFCLauncherDlg::run(const wchar_t* fn)
 {
 	STARTUPINFOW si;
 	PROCESS_INFORMATION pi;
@@ -123,7 +154,13 @@ bool run(const wchar_t* fn)
 	BOOL result= CreateProcessW(fn, NULL, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi);
     if (!result)
     {
-        MessageBox(NULL,L"启动失败",L"",MB_OK | MB_ICONERROR);
+        MessageBox(T("launcher.start.failed").c_str(), L"",MB_OK | MB_ICONERROR);
+    }
+    else
+    {
+        // 只关心进程有没有启动成功，句柄用完就关。
+        CloseHandle(pi.hProcess);
+        CloseHandle(pi.hThread);
     }
     return result;
 }

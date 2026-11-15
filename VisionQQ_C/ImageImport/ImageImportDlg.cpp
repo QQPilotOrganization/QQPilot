@@ -95,6 +95,32 @@ BEGIN_MESSAGE_MAP(CImageImportDlg, CDialogEx)
 END_MESSAGE_MAP()
 
 
+// ---- 翻译辅助 ----------------------------------------------------------
+
+std::wstring CImageImportDlg::T(const char* key) const
+{
+	if (m_i18n)
+	{
+		return m_i18n->get(key);
+	}
+	return L"X" + clocalization_utf8_to_wide(key);
+}
+
+std::wstring CImageImportDlg::Format(const char* key,
+	std::initializer_list<std::wstring> args) const
+{
+	return clocalization_format(T(key), std::vector<std::wstring>(args));
+}
+
+void CImageImportDlg::SetText(int id, const char* key)
+{
+	if (CWnd* control = GetDlgItem(id))
+	{
+		control->SetWindowTextW(T(key).c_str());
+	}
+}
+
+
 // CImageImportDlg 消息处理程序
 
 BOOL CImageImportDlg::OnInitDialog()
@@ -107,6 +133,19 @@ BOOL CImageImportDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// 设置小图标
 
 	// TODO: 在此添加额外的初始化代码
+
+	// 翻译表由 Rust 生成（data\zh-CN.json 等），从当前目录读。
+	// 每个对话框自己一份实例，互不影响。
+	m_i18n = std::make_unique<Clocalization>("auto");
+
+	SetWindowTextW(T("imageimport.title").c_str());
+	SetText(IDC_STATIC_DESC, "imageimport.desc");
+	SetText(IDC_STATIC_FOLDER_LABEL, "imageimport.folder.label");
+	SetText(IDC_STATIC_STATUS, "imageimport.status");
+	SetText(IDOK, "imageimport.done");
+	SetText(IDC_BUTTON1, "imageimport.folder.pick");
+	SetText(IDC_BUTTON2, "imageimport.start");
+
 	std::optional<std::wstring> tencentFiles = findTencentFiles();
 	std::wstring ntDataPath = L"";
 	if (tencentFiles.has_value())
@@ -124,10 +163,10 @@ BOOL CImageImportDlg::OnInitDialog()
 			}
 
 		}
-		Log2.SetWindowTextW(L"完毕。");
+		Log2.SetWindowTextW(T("imageimport.status.ready").c_str());
 		return TRUE;
 	done:
-		std::wstring str = L"找到nt_data文件夹：" + folders[0].wstring() + L"\n";
+		std::wstring str = Format("imageimport.found.ntdata", { folders[0].wstring() });
 		CString str2 = str.c_str();
 		addLog(str2);
 		Value.SetWindowTextW(ntDataPath.c_str());
@@ -204,9 +243,11 @@ void CImageImportDlg::OnBnClickedButton1()
 	CFolderPickerDialog folderDialog;
 
 	//folderDlg.SetWindowTextW(L"请选择一个文件夹");
-	folderDialog.m_ofn.lpstrTitle = L"请选择";
+	// 这个指针会在 DoModal 期间被用到，所以标题要活到函数结束
+	const std::wstring pickTitle = T("imageimport.pick.title");
+	folderDialog.m_ofn.lpstrTitle = pickTitle.c_str();
 
-	
+
 	auto txFile = findTencentFiles();
 	folderDialog.m_ofn.lpstrInitialDir = txFile.has_value() ? txFile.value().c_str() : L"";
 
@@ -224,7 +265,8 @@ void CImageImportDlg::ThcopyFile()
 			{
 				if ((hasExtension(p, L".png") or hasExtension(p, L".jpg") or hasExtension(p, L".gif")))
 				{
-					CString name = std::wstring(L"正在处理：" + p.filename().wstring() + p.extension().wstring()).c_str();
+					CString name = Format("imageimport.status.processing",
+						{ p.filename().wstring() + p.extension().wstring() }).c_str();
 					this->addLog(name);
 					return true;
 				}
@@ -243,7 +285,8 @@ void CImageImportDlg::ThcopyFile()
 		{
 			if (GetLastError() == ERROR_PATH_NOT_FOUND)
 			{
-				MessageBox(L"一个或多个中间目录不存在", L"错误", MB_OK | MB_ICONERROR);
+				MessageBox(T("imageimport.error.missing.dirs").c_str(),
+					T("imageimport.error").c_str(), MB_OK | MB_ICONERROR);
 			}
 		}
 		//std::wstring realExt=;
@@ -263,7 +306,8 @@ void CImageImportDlg::ThcopyFile()
 		if (success)
 		{
 
-			CString name2 = std::wstring(L"成功复制："+file.filename().wstring()+L" -> " + destFileName).c_str();
+			CString name2 = Format("imageimport.status.copied",
+				{ file.filename().wstring(), destFileName }).c_str();
 			this->addLog(name2);
 			++imageCount;
 			++successCount;
@@ -271,7 +315,8 @@ void CImageImportDlg::ThcopyFile()
 		else
 		{
 			DWORD err = GetLastError();
-			CString name2 = (std::wstring(L"复制失败：" + std::to_wstring(err))).c_str();
+			CString name2 = Format("imageimport.status.copy.failed",
+				{ std::to_wstring(err) }).c_str();
 
 			this->addLog(name2);
 			++failCount;
@@ -281,9 +326,10 @@ void CImageImportDlg::ThcopyFile()
 
 	}
 
-	Log2.SetWindowText(L"复制完成！");
-	std::wstring log = L"成功复制：" + std::to_wstring(successCount) + L"张，失败：" + std::to_wstring(failCount) + L"张，总共：" + std::to_wstring(imageCount) + L"张";
-	MessageBox(log.c_str(), L"复制完成！", MB_OK | MB_ICONEXCLAMATION);
+	Log2.SetWindowTextW(T("imageimport.status.complete").c_str());
+	std::wstring log = Format("imageimport.summary",
+		{ std::to_wstring(successCount), std::to_wstring(failCount), std::to_wstring(imageCount) });
+	MessageBox(log.c_str(), T("imageimport.status.complete").c_str(), MB_OK | MB_ICONEXCLAMATION);
 
 
 
@@ -297,14 +343,14 @@ void CImageImportDlg::OnBnClickedButton2()
 		DWORD error = GetLastError();
 		if (error != ERROR_ALREADY_EXISTS)
 		{
-			AfxMessageBox(L"无法创建文件夹");
+			AfxMessageBox(T("imageimport.error.cant.create.dir").c_str());
 			return;
 		}
 	}
 
 	if (not std::filesystem::exists(m_folder.GetBuffer()))
 	{
-		AfxMessageBox(L"文件夹不存在");
+		AfxMessageBox(T("imageimport.error.folder.missing").c_str());
 		return;
 	}
 	//this->t = std::thread(&CImageImportDlg::ThcopyFile,this);

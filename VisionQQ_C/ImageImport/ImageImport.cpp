@@ -39,6 +39,10 @@ BOOL CImageImportApp::InitInstance()
 {
 // TODO: 调用 AfxInitRichEdit2() 以初始化 richedit2 库。\n"	CWinApp::InitInstance();
 
+	// Clocalization.dll 放在 data\（也就是本程序旁边）时默认搜索就够，
+	// 这里只是保证从别处启动、或者 dll 被挪到 data\ 时也能找到。
+	clocalization_set_search_path();
+
 
 	// 创建 shell 管理器，以防对话框包含
 	// 任何 shell 树视图控件或 shell 列表视图控件。

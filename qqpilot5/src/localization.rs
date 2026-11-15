@@ -234,7 +234,34 @@ mod tests {
     "option.group.auto": "自动化",
     "option.group.status": "状态",
     "option.api.key.in.env":"环境变量读取(QQPILOT_LLM_API_KEY)",
-    "error.env.notfound.QQPILOT_LLM_API_KEY":"未找到环境变量QQPILOT_LLM_API_KEY(set QQPILOT_LLM_API_KEY=api-key)"
+    "error.env.notfound.QQPILOT_LLM_API_KEY":"未找到环境变量QQPILOT_LLM_API_KEY(set QQPILOT_LLM_API_KEY=api-key)",
+
+    "launcher.title": "QQPilot菜单",
+    "launcher.start": "启动QQPilot",
+    "launcher.settings": "设置",
+    "launcher.image.import": "图片导入",
+    "launcher.close": "关闭",
+    "launcher.start.failed": "启动失败",
+
+    "imageimport.title": "导入图片",
+    "imageimport.desc": "导入图片工具可以快速的将一个文件夹内的所有图片全部复制到Images文件夹下",
+    "imageimport.folder.label": "文件夹位置",
+    "imageimport.folder.pick": "选择文件夹",
+    "imageimport.start": "开始",
+    "imageimport.status": "状态",
+    "imageimport.done": "完成",
+    "imageimport.status.ready": "完毕。",
+    "imageimport.status.processing": "正在处理：{0}",
+    "imageimport.status.copied": "成功复制：{0} -> {1}",
+    "imageimport.status.copy.failed": "复制失败：{0}",
+    "imageimport.status.complete": "复制完成！",
+    "imageimport.found.ntdata": "找到nt_data文件夹：{0}\n",
+    "imageimport.error": "错误",
+    "imageimport.error.missing.dirs": "一个或多个中间目录不存在",
+    "imageimport.error.cant.create.dir": "无法创建文件夹",
+    "imageimport.error.folder.missing": "文件夹不存在",
+    "imageimport.pick.title": "请选择",
+    "imageimport.summary": "成功复制：{0}张，失败：{1}张，总共：{2}张"
 }"#,
         )
         .expect("不是合法的json");

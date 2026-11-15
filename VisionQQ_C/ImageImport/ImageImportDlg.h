@@ -4,6 +4,11 @@
 
 #pragma once
 
+#include <memory>
+#include <string>
+#include <initializer_list>
+
+#include "localization.h"
 
 // CImageImportDlg 对话框
 class CImageImportDlg : public CDialogEx
@@ -24,6 +29,16 @@ public:
 // 实现
 protected:
 	HICON m_hIcon;
+
+	// 翻译：每个对话框自己一份实例（在 OnInitDialog 里创建，那时 CWD 已经是对的）
+	std::unique_ptr<Clocalization> m_i18n;
+
+	// 取一条文案；没加载成功时返回 X<key>
+	std::wstring T(const char* key) const;
+	// 带 `{0}` `{1}` 占位符的文案
+	std::wstring Format(const char* key, std::initializer_list<std::wstring> args) const;
+	// 给某个控件设置文案（控件不存在就跳过）
+	void SetText(int id, const char* key);
 
 	// 生成的消息映射函数
 	virtual BOOL OnInitDialog();

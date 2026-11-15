@@ -7,6 +7,20 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
+  <Project Path="Clocalization/Clocalization.vcxproj" Id="57802c13-8e83-4e2a-ac57-12e06b62343e">
+    <BuildType Solution="release2|*" Project="Release" />
+    <Platform Solution="Debug|ARM64" Project="x64" />
+    <Platform Solution="release2|ARM64" Project="x64" />
+  </Project>
+  <Project Path="ClocalizationTest/clocalc.vcxproj" Id="0c5981ea-17e7-4a3e-ab05-8745fc3d696f">
+    <BuildType Solution="release2|*" Project="Release" />
+    <BuildType Solution="Release|ARM64" Project="Debug" />
+    <Platform Solution="*|ARM64" Project="x64" />
+    <Build Solution="*|x86" Project="false" />
+    <Build Solution="release2|ARM64" Project="false" />
+    <Build Solution="release2|x64" Project="false" />
+    <Build Solution="Release|x64" Project="false" />
+  </Project>
   <Project Path="FocusQQWindow2/FocusQQWindow2.vcxproj" Id="92a5f2dc-82d6-4511-995d-853d782b1c7a">
     <BuildType Solution="release2|*" Project="Release" />
   </Project>
@@ -26,10 +40,6 @@
   <Project Path="MFCUpdate/MFCUpdate.vcxproj">
     <BuildType Solution="release2|*" Project="Release" />
     <Platform Solution="Debug|ARM64" Project="x64" />
-  </Project>
-  <Project Path="Sauce/Sauce.vcxproj">
-    <BuildType Solution="release2|*" Project="Release" />
-    <Platform Solution="*|ARM64" Project="x64" />
   </Project>
   <Project Path="ScaleToINI/ScaleToINI.vcxproj" Id="0c76a433-d76d-456b-9b4f-d24f05845967">
     <BuildType Solution="release2|*" Project="Release" />
@@ -54,9 +64,5 @@
     <BuildType Solution="release2|*" Project="Release" />
     <Platform Solution="Debug|ARM64" Project="x64" />
     <Platform Solution="release2|ARM64" Project="x64" />
-  </Project>
-  <Project Path="VisionII/VisionII.vcxproj" Id="30c91994-5cbb-4c89-96b3-6c0076cf49a2">
-    <BuildType Solution="release2|*" Project="Release" />
-    <Platform Solution="*|ARM64" Project="x64" />
   </Project>
 </Solution>
