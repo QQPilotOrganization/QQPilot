@@ -34,6 +34,7 @@ int main(int argc, char** argv)
 		if (std::strcmp(argv[i], "-h") == 0)
 		{
 		printHelp:
+			std::print("在文件后增加一串时间相关的后缀以修改散列\n");
 			std::print("用法{} file1 <file2> ...\n", argv[0]);
 			return 0;
 		}
