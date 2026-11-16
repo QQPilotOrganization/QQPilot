@@ -15,28 +15,224 @@
 
 #include "inicpp.hpp"
 #include "ot.h"
-
+#include <concepts>
+#include<utility>
+#include <array>
 namespace fs = std::filesystem;
 
-// ---- 与既有代码一致的常量 -----------------------------------------------
 
+static FARPROC GetProcAny(HMODULE h, const char* name)
+{
+	FARPROC p = GetProcAddress(h, name);
+	if (p) return p;
+
+	char buf[256];
+	_snprintf_s(buf, _TRUNCATE, "_%s", name);
+	return GetProcAddress(h, buf);   // x86 备用
+}
+
+template <class T>
+static bool Bind(HMODULE h, const char* name, T& fn)
+{
+	fn = reinterpret_cast<T>(GetProcAny(h, name));
+	return fn != nullptr;
+}
+
+// ---------------- ScreenCapture.dll ----------------
+struct ScreenCaptureApi
+{
+	HMODULE h = nullptr;
+	PFN_fullScreenshot fullScreenshot = nullptr;
+	PFN_screenshot     screenshot = nullptr;
+
+	bool Load(const wchar_t* dll = L"ScreenCapture.dll")
+	{
+		h = LoadLibraryW(dll);
+		if (!h) return false;
+		return Bind(h, "fullScreenshot", fullScreenshot)
+			&& Bind(h, "screenshot", screenshot);
+	}
+	ScreenCaptureApi() = default;
+	ScreenCaptureApi(const
+		ScreenCaptureApi&) = delete;
+	ScreenCaptureApi& operator=(const
+		ScreenCaptureApi&) = delete; ~
+		ScreenCaptureApi() {
+		if (h) { FreeLibrary(h); h = nullptr; }
+	}
+};
+
+// ---------------- Vision.dll ----------------
+struct VisionApi
+{
+	HMODULE h = nullptr;
+	PFN_matchTemplatesSelectedScaleBegin matchTemplatesSelectedScaleBegin = nullptr;
+	PFN_matchTemplateNext                matchTemplateNext = nullptr;
+	PFN_matchTemplateEnd                 matchTemplateEnd = nullptr;
+
+	bool Load(const wchar_t* dll = L"Vision.dll")
+	{
+		h = LoadLibraryW(dll);
+		if (!h) return false;
+		return Bind(h, "matchTemplatesSelectedScaleBegin", matchTemplatesSelectedScaleBegin)
+			&& Bind(h, "matchTemplateNext", matchTemplateNext)
+			&& Bind(h, "matchTemplateEnd", matchTemplateEnd);
+	}
+	VisionApi() = default;
+	VisionApi(const
+		VisionApi&) = delete;
+	VisionApi& operator=(const
+		VisionApi&) = delete; ~
+		VisionApi() {
+		if (h) { FreeLibrary(h); h = nullptr; }
+	}
+};
+
+// ---------------- InputEvent.dll ----------------
+struct InputEventApi
+{
+	HMODULE h = nullptr;
+	PFN_DPIAwarenessPrologue DPIAwarenessPrologue = nullptr;
+	PFN_Lclick               Lclick = nullptr;
+
+	bool Load(const wchar_t* dll = L"InputEvent.dll")
+	{
+		h = LoadLibraryW(dll);
+		if (!h) return false;
+		return Bind(h, "DPIAwarenessPrologue", DPIAwarenessPrologue)
+			&& Bind(h, "Lclick", Lclick);
+	}
+	InputEventApi() = default;
+	InputEventApi(const
+		InputEventApi&) = delete;
+	InputEventApi& operator=(const
+		InputEventApi&) = delete; ~
+		InputEventApi() {
+		if (h) { FreeLibrary(h); h = nullptr; }
+	}
+};
+
+// ---------------- uploadFile.dll ----------------
+struct UploadFileApi
+{
+	HMODULE h = nullptr;
+	PFN_uploadSelectedFiles uploadSelectedFiles = nullptr;
+	PFN_escape              escapeFn = nullptr;
+
+	bool Load(const wchar_t* dll = L"uploadFile.dll")
+	{
+		h = LoadLibraryW(dll);
+		if (!h) return false;
+
+		bool ok = Bind(h, "uploadSelectedFiles", uploadSelectedFiles);
+
+
+		escapeFn = reinterpret_cast<PFN_escape>(GetProcAny(h, "escape"));
+
+		return ok && escapeFn != nullptr;
+	}
+	UploadFileApi() = default;
+	UploadFileApi(const
+		UploadFileApi&) = delete;
+	UploadFileApi& operator=(const
+		UploadFileApi&) = delete; ~
+		UploadFileApi() {
+		if (h) { FreeLibrary(h); h = nullptr; }
+	}
+};
+typedef std::array<float, 4> Rectf;
+static constexpr Rectf toRelativRect(const RECT a, int width, int height)
+{
+	const  float left = static_cast<float>(a.left) / static_cast<float>(width);
+	const  float top = static_cast<float>(a.top) / static_cast<float>(height);
+	const  float right = static_cast<float>(a.right) / static_cast<float>(width);
+	const  float bottom = static_cast<float>(a.bottom) / static_cast<float>(height);
+
+	return 	 { left,top,right,bottom };
+}
+//struct Rectf
+//{
+//	float    left;
+//	float    top;
+//	float    right;
+//	float    bottom;
+//
+//	Rectf(float left, float top, float right, float bottom) :left(left), top(top), right(right), bottom(bottom) {}
+//	Rectf(RECT a, int width, int height)
+//	{
+//		this->left = static_cast<float>(a.left) / static_cast<float>(width);
+//		this->top = static_cast<float>(a.top) / static_cast<float>(height);
+//		this->right = static_cast<float>(a.right) / static_cast<float>(width);
+//		this->bottom = static_cast<float>(a.bottom) / static_cast<float>(height);
+//	}
+//
+//};
+typedef std::pair<float, float> Pointf;
+static constexpr Pointf toRelativePoint(int x, int y, int width, int height)
+{
+	return std::make_pair(
+		static_cast<float>(x) / static_cast<float>(width),
+		static_cast<float>(y) / static_cast<float>(height));
+
+}
+
+//pub fn to_actual_size(relative: RelativeRect, size : (i32, i32)) -> RectI {
+//	(
+//		(relative.0 * size.0 as f64).round_ties_even() as i32,
+//		(relative.1 * size.1 as f64).round_ties_even() as i32,
+//		(relative.2 * size.0 as f64).round_ties_even() as i32,
+//		(relative.3 * size.1 as f64).round_ties_even() as i32,
+//		)
+//}
+//
+///// 相对点 -> 实际点。
+//pub fn to_actual_point(relative: RelativePoint, size : (i32, i32)) -> PointI {
+//	(
+//		(relative.0 * size.0 as f64).round_ties_even() as i32,
+//		(relative.1 * size.1 as f64).round_ties_even() as i32,
+//		)
+//}
+
+static std::array<int, 4> toActualSize(const Rectf& relative, const std::pair<int, int>& size)
+{
+	auto a = static_cast<int>(std::roundf(relative.at(0) * size.first));
+	return {
+			static_cast<int>(std::roundf(relative.at(0) * size.first)),
+			static_cast<int>(std::roundf(relative.at(1) * size.second)),
+			static_cast<int>(std::roundf(relative.at(2) * size.first)),
+			static_cast<int>(std::roundf(relative.at(3) * size.second)),
+
+	};
+
+}
+static std::pair<int, int> toActualPoint(Pointf relative, const std::pair<int, int>& size)
+{
+	return std::make_pair<int, int>(
+		std::roundf(relative.first * static_cast<float>(size.first)),
+		std::roundf(relative.second * static_cast<float>(size.second))
+	);
+}
 constexpr int DefaultSizeW = 1280;
 constexpr int DefaultSizeH = 720;
 
-RECT UPLOAD_FILE_POSSIBLE_BBOX_ABSOLUTE_SIZE = {241, 513, 543, 562};
+constexpr int BasicWidth = 1920;
+constexpr int BasicHeight = 1080;
 
-// 文件传完之后"发送"按钮的位置（屏幕物理像素）。
+constexpr RECT UPLOAD_FILE_POSSIBLE_BBOX_ABSOLUTE_SIZE = { 464,659,464 + 69,659 + 112 };
+constexpr Rectf UPLOAD_FILE_POSSIBLE_BBOX_RELATIVE_SIZE = toRelativRect(UPLOAD_FILE_POSSIBLE_BBOX_ABSOLUTE_SIZE, BasicWidth, BasicHeight);
+
 constexpr int readyToSendX = 945;
 constexpr int readyToSendY = 763;
+
+constexpr Pointf  readyToSendRelativePoint = toRelativePoint(readyToSendX, readyToSendY, BasicWidth, BasicHeight);
 
 // 截图/模板的固定文件名：DLL 内部写死，改不了。
 const char* const SCREENSHOT_FILE = "screenshot.png";
 const char* const TEMPLATE_FILE = "file.png";
 
-// 上传对话框的标题里一定含有这三个字（uploadFile.dll 也是按这个找窗口的）。
 const wchar_t* const DIALOG_TITLE_KEYWORD = L"请选择";
 
-// 模板匹配容差：与 qqpilot5 里找 copy.png 用的值一致。
+
 constexpr int DefaultTolerance = 30;
 
 // ---- 小工具 -------------------------------------------------------------
@@ -56,6 +252,8 @@ static int fail(const std::string& text, int code)
 	std::cerr << "错误: " << text << std::endl;
 	return code;
 }
+
+
 
 // config.ini 里的缩放和窗口尺寸；读不到就用默认值。
 struct Settings
@@ -124,7 +322,7 @@ static bool png_size(const fs::path& path, int& width, int& height)
 		return false;
 	}
 
-	static const unsigned char signature[8] = {0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A};
+	static const unsigned char signature[8] = { 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A };
 	if (std::memcmp(header, signature, sizeof(signature)) != 0)
 	{
 		return false;
@@ -194,9 +392,9 @@ static bool find_file_icon(
 	const fs::path& template_image,
 	float preferred_scale,
 	int tolerance,
-	Hit& hit)
+	Hit& hit, const VisionApi& vision)
 {
-	std::vector<float> scales{preferred_scale, preferred_scale - 0.1f, preferred_scale + 0.1f};
+	std::vector<float> scales{ preferred_scale, preferred_scale - 0.1f, preferred_scale + 0.1f };
 
 	const std::string image = screenshot.string();
 	const std::string templ = template_image.string();
@@ -217,22 +415,22 @@ static bool find_file_icon(
 		tried.push_back(scale);
 
 		const int count =
-			matchTemplatesSelectedScaleBegin(image.c_str(), templ.c_str(), tolerance, 1, scale);
+			vision.matchTemplatesSelectedScaleBegin(image.c_str(), templ.c_str(), tolerance, 1, scale);
 		if (count < 0)
 		{
-			matchTemplateEnd();
+			vision.matchTemplateEnd();
 			std::cerr << "错误: 模板匹配加载失败（" << count << "）: 截图 " << image
-					  << " / 模板 " << templ << std::endl;
+				<< " / 模板 " << templ << std::endl;
 			return false;
 		}
 		if (count == 0)
 		{
-			matchTemplateEnd();
+			vision.matchTemplateEnd();
 			continue;
 		}
 
-		const Point point = matchTemplateNext(0);
-		matchTemplateEnd();
+		const Point point = vision.matchTemplateNext(0);
+		vision.matchTemplateEnd();
 		hit.x = static_cast<int>(point.x);
 		hit.y = static_cast<int>(point.y);
 		hit.scale = scale;
@@ -253,6 +451,7 @@ struct Options
 	int wait_ms = 5000;
 	bool dry_run = false;
 	bool no_send = false;
+	bool screenshotOnly = false;
 };
 
 static void print_usage()
@@ -262,21 +461,21 @@ static void print_usage()
 		" [选项]"
 #endif	
 		"\n"
-			  << "\n"
-			  << "  目录会展开成它下面的所有文件（不递归）；文件按给的顺序上传。\n"
-			  << "\n"
+		<< "\n"
+		<< "  目录会展开成它下面的所有文件（不递归）；文件按给的顺序上传。\n"
+		<< "\n"
 
 #ifdef _DEBUG
 
-			  << "选项:\n"
-			  << "  --ready X,Y      发送按钮的位置（默认 " << readyToSendX << "," << readyToSendY
-			  << "）\n"
-			  << "  --tolerance N    模板匹配容差（默认 " << DefaultTolerance << "）\n"
-			  << "  --scale F        覆盖 config.ini 里的 scale\n"
-			  << "  --wait MS        等上传对话框的毫秒数（默认 5000）\n"
-			  << "  --dry-run        只截图 + 定位，不点击也不上传\n"
-			  << "  --no-send        上传完不发送\n"
-			  << "  -h, --help       显示帮助\n"
+		<< "选项:\n"
+		<< "  --ready X,Y      发送按钮的位置（默认 " << readyToSendX << "," << readyToSendY
+		<< "）\n"
+		<< "  --tolerance N    模板匹配容差（默认 " << DefaultTolerance << "）\n"
+		<< "  --scale F        覆盖 config.ini 里的 scale\n"
+		<< "  --wait MS        等上传对话框的毫秒数（默认 5000）\n"
+		<< "  --dry-run        只截图 + 定位，不点击也不上传\n"
+		<< "  --no-send        上传完不发送\n"
+		<< "  -h, --help       显示帮助\n"
 #endif
 		;
 }
@@ -313,14 +512,14 @@ static bool parse_args(int argc, wchar_t** argv, Options& options, bool& show_he
 
 
 		auto value_after = [&](const char* name) -> const wchar_t*
-		{
-			if (i + 1 >= argc)
 			{
-				std::cerr << "错误: " << name << " 后面缺参数" << std::endl;
-				return nullptr;
-			}
-			return argv[++i];
-		};
+				if (i + 1 >= argc)
+				{
+					std::cerr << "错误: " << name << " 后面缺参数" << std::endl;
+					return nullptr;
+				}
+				return argv[++i];
+			};
 
 		if (arg == L"-h" or arg == L"--help")
 		{
@@ -335,6 +534,11 @@ static bool parse_args(int argc, wchar_t** argv, Options& options, bool& show_he
 		if (arg == L"--no-send")
 		{
 			options.no_send = true;
+			continue;
+		}
+		if (arg == L"-ss")
+		{
+			options.screenshotOnly = true;
 			continue;
 		}
 		if (arg == L"--ready")
@@ -397,7 +601,7 @@ static bool collect_files(const std::vector<fs::path>& inputs, std::vector<fs::p
 		{
 			std::vector<fs::path> found;
 			for (const auto& entry : fs::directory_iterator(
-					 input, fs::directory_options::skip_permission_denied, error))
+				input, fs::directory_options::skip_permission_denied, error))
 			{
 				if (entry.is_regular_file(error))
 				{
@@ -430,8 +634,45 @@ static bool collect_files(const std::vector<fs::path>& inputs, std::vector<fs::p
 
 // ---- main ---------------------------------------------------------------
 
+static int doScreenshot(const ScreenCaptureApi& screenCapture, const std::array<int, 4>& bbox);
+
 int wmain(int argc, wchar_t** argv)
 {
+
+	ScreenCaptureApi screenCapture;
+	VisionApi        vision;
+	InputEventApi    inputEvent;
+	UploadFileApi    uploadFile;
+
+	bool fullyLoaded = true;
+
+	if (not screenCapture.Load() )	 
+	{
+		std::cout << "未找到ScreenCapture.dll\n";
+		fullyLoaded = false;
+	}
+
+	if (not vision.Load())
+	{
+		std::cout << "未找到vision.dll\n";
+		fullyLoaded = false;
+	}
+	if (not inputEvent.Load())
+	{
+		std::cout << "未找到inputEvent.dll\n";
+		fullyLoaded = false;
+	}
+
+	if (not uploadFile.Load())
+	{
+		std::cout << "未找到uploadFile.dll\n";
+		fullyLoaded = false;
+	}
+	if (not fullyLoaded)
+	{
+		return 1;
+	}
+
 	SetConsoleOutputCP(CP_UTF8);
 
 	Options options;
@@ -451,6 +692,28 @@ int wmain(int argc, wchar_t** argv)
 		return 1;
 	}
 
+
+	Settings settings = read_settings();
+
+
+	if (options.scale > 0.0f)
+	{
+		settings.scale = options.scale;
+	}
+
+	std::pair<int, int> actualWindowSize = std::make_pair<int, int>(settings.width * settings.scale, settings.height * settings.scale);
+	std::array<int, 4> uploadFilePossibleBBoxActualSize = toActualSize(UPLOAD_FILE_POSSIBLE_BBOX_RELATIVE_SIZE, actualWindowSize);
+	std::pair<int, int> readyToSendButtonActualPos = toActualPoint(readyToSendRelativePoint, actualWindowSize);
+
+	options.ready_x = readyToSendButtonActualPos.first;
+	options.ready_y = readyToSendButtonActualPos.second;
+
+	if (options.screenshotOnly)
+	{
+		doScreenshot(screenCapture,uploadFilePossibleBBoxActualSize);
+		log_line("截图成功。");
+		return 0;
+	}
 	std::vector<fs::path> files;
 	if (not collect_files(options.inputs, files))
 	{
@@ -461,15 +724,13 @@ int wmain(int argc, wchar_t** argv)
 		return fail("没有要上传的文件", 1);
 	}
 
-	DPIAwarenessPrologue();
+	inputEvent.DPIAwarenessPrologue();
 
-	Settings settings = read_settings();
-	if (options.scale > 0.0f)
-	{
-		settings.scale = options.scale;
-	}
-	log_line("scale: " + std::to_string(settings.scale) + "，窗口 " + std::to_string(settings.width) +
-			 "x" + std::to_string(settings.height));
+
+
+
+	log_line("scale: " + std::to_string(settings.scale) + "，窗口 " + std::to_string(actualWindowSize.first) +
+		"x" + std::to_string(actualWindowSize.second));
 
 	const fs::path template_image = resolve_template();
 	if (template_image.empty())
@@ -485,27 +746,23 @@ int wmain(int argc, wchar_t** argv)
 		return fail("模板不是有效的 PNG: " + template_image.string(), 3);
 	}
 
-	log_line("Files: " + std::to_string(files.size()) );
+	log_line("Files: " + std::to_string(files.size()));
 	// 2. 截图（先删旧的，免得截图失败时误用上一次的图）。
 	std::error_code ignored;
 	fs::remove(SCREENSHOT_FILE, ignored);
-	if (screenshot(
-		static_cast<int>(UPLOAD_FILE_POSSIBLE_BBOX_ABSOLUTE_SIZE.left * settings.scale),
-		static_cast<int>(UPLOAD_FILE_POSSIBLE_BBOX_ABSOLUTE_SIZE.top * settings.scale),
-		static_cast<int>(UPLOAD_FILE_POSSIBLE_BBOX_ABSOLUTE_SIZE.right * settings.scale),
-		static_cast<int>(UPLOAD_FILE_POSSIBLE_BBOX_ABSOLUTE_SIZE.bottom * settings.scale)) != 0)
+	if (doScreenshot(screenCapture, uploadFilePossibleBBoxActualSize) != 0)
 	{
 		return fail("截图失败（screenshot.png 没生成）", 2);
 	}
 
 	// 3. 定位 file.png。
 	Hit hit;
-	if (not find_file_icon(SCREENSHOT_FILE, template_image, settings.scale, options.tolerance, hit))
+	if (not find_file_icon(SCREENSHOT_FILE, template_image, settings.scale, options.tolerance, hit, vision))
 	{
 		return fail("截图里没找到 file.png：确认 QQ 窗口在前面，并且那个\"文件\"图标能看到", 3);
 	}
-	const int click_x = hit.x + static_cast<int>(std::lround(template_width * hit.scale / 2.0f))+ static_cast<int>(UPLOAD_FILE_POSSIBLE_BBOX_ABSOLUTE_SIZE.left * settings.scale);
-	const int click_y = hit.y + static_cast<int>(std::lround(template_height * hit.scale / 2.0f))+ static_cast<int>(UPLOAD_FILE_POSSIBLE_BBOX_ABSOLUTE_SIZE.top * settings.scale);
+	const int click_x = hit.x + static_cast<int>(std::lround(template_width * hit.scale / 2.0f)) + uploadFilePossibleBBoxActualSize.at(0);
+	const int click_y = hit.y + static_cast<int>(std::lround(template_height * hit.scale / 2.0f)) + uploadFilePossibleBBoxActualSize.at(1);
 	if (options.dry_run)
 	{
 		log_line("--dry-run");
@@ -513,13 +770,13 @@ int wmain(int argc, wchar_t** argv)
 	}
 
 	// 4. 点开上传对话框，等它出来之后再等 1 秒。
-	if (not Lclick(static_cast<unsigned>(click_x), static_cast<unsigned>(click_y)))
+	if (not inputEvent.Lclick(static_cast<unsigned>(click_x), static_cast<unsigned>(click_y)))
 	{
 		return fail("点击 file.png 失败", 4);
 	}
 	if (not wait_for_dialog(true, options.wait_ms))
 	{
-		escape();
+		uploadFile.escapeFn();
 	}
 	if (not wait_for_dialog(true, options.wait_ms))
 	{
@@ -542,10 +799,10 @@ int wmain(int argc, wchar_t** argv)
 	}
 
 	log_line("上传 " + std::to_string(raw_paths.size()) + " 个文件 ...");
-	uploadSelectedFiles(raw_paths.data(), raw_paths.size());
+	uploadFile.uploadSelectedFiles(raw_paths.data(), raw_paths.size());
 	if (not wait_for_dialog(false, options.wait_ms))
 	{
-		escape();
+		uploadFile.escapeFn();
 	}
 	if (not wait_for_dialog(false, options.wait_ms))
 	{
@@ -561,12 +818,22 @@ int wmain(int argc, wchar_t** argv)
 	}
 	log_line("点击发送 (" + std::to_string(options.ready_x) + "," + std::to_string(options.ready_y) + ")");
 
-	if (not Lclick(static_cast<unsigned>(options.ready_x), static_cast<unsigned>(options.ready_y)))
+	if (not inputEvent.Lclick(static_cast<unsigned>(options.ready_x), static_cast<unsigned>(options.ready_y)))
 	{
 		return fail("点击发送失败", 4);
 	}
 
 	log_line("完成。");
-	escape();
+	uploadFile.escapeFn();
+
 	return 0;
+}
+
+static int doScreenshot(const ScreenCaptureApi& screenCapture,const std::array<int, 4>& bbox)
+{
+	return screenCapture.screenshot(
+		static_cast<int>(bbox.at(0)),
+		static_cast<int>(bbox.at(1)),
+		static_cast<int>(bbox.at(2)),
+		static_cast<int>(bbox.at(3)));
 }
