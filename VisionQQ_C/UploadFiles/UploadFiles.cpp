@@ -638,6 +638,7 @@ static int doScreenshot(const ScreenCaptureApi& screenCapture, const std::array<
 
 int wmain(int argc, wchar_t** argv)
 {
+	SetConsoleOutputCP(CP_UTF8);
 
 	ScreenCaptureApi screenCapture;
 	VisionApi        vision;
@@ -673,7 +674,6 @@ int wmain(int argc, wchar_t** argv)
 		return 1;
 	}
 
-	SetConsoleOutputCP(CP_UTF8);
 
 	Options options;
 	bool show_help = false;
