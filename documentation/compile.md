@@ -61,7 +61,7 @@ CertUtil: -hashfile command completed successfully.
 </details>
 
 
->`UploadFiles`、`get_chat_name`、`saltfile`和`get_chat_name2`在[DLC](./DLC)可供下载
+>`UploadFiles`、`get_chat_name`、`saltfile`和`get_chat_name2`在[DLC](./DLC)或release可供下载
 
 > [!info]
 > [get_chat_name2](./get_chat_name2)在[qqpilot-dsh-plugin](https://github.com/QQPilotOrganization/qqpilot-dsh-plugin___)使用时需要修改程序名称为`get_chat_name.exe`否则无法正常识别。
