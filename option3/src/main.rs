@@ -468,6 +468,9 @@ impl SettingsApp {
             .set_check_state(check_state(settings.tab_after_match_template_failed));
         self.api_key_in_env
             .set_check_state(check_state(settings.api_key_in_env));
+
+        self.api_key
+            .set_readonly(settings.api_key_in_env);
     }
 
     /// 对应 `Form1.SaveConfig`：把界面上的值攒成 [`Settings`] 并写回文件。
@@ -604,8 +607,29 @@ impl SettingsApp {
     }
 
     fn api_key_input_readonly(&self) {
-        self.api_key.set_readonly(if self.api_key_in_env.check_state()==nwg::CheckBoxState::Checked {true} else {false});
-        
+        if self.api_key_in_env.check_state() == nwg::CheckBoxState::Checked {
+            let translate = localization::load();
+
+            let owner = handle_of(&self.window.handle);
+
+            if message_box(
+                owner,
+                &localization::get(&translate, "option.reset.key"),
+                &localization::get(&translate, "option.title"),
+                MB_OKCANCEL | MB_ICONINFORMATION,
+            ) != IDOK
+            {
+                self.api_key_in_env
+                    .set_check_state(nwg::CheckBoxState::Unchecked);
+                return;
+            } else {
+            }
+            self.api_key.set_text("ENV");
+
+            self.api_key.set_readonly(true);
+        } else {
+            self.api_key.set_readonly(false);
+        }
     }
     /// 「连通性测试」：确认后按**界面当前**的参数真发一次最小请求。
     ///

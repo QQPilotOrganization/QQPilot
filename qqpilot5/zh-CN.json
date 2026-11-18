@@ -170,5 +170,6 @@
     "imageimport.error.cant.create.dir": "无法创建文件夹",
     "imageimport.error.folder.missing": "文件夹不存在",
     "imageimport.pick.title": "请选择",
-    "imageimport.summary": "成功复制：{0}张，失败：{1}张，总共：{2}张"
+    "imageimport.summary": "成功复制：{0}张，失败：{1}张，总共：{2}张",
+    "option.reset.key": "将会重置配置文件中的API Key,是否确认?"
 }

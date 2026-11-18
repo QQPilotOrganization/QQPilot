@@ -225,7 +225,7 @@ mod tests {
     "option.testconnect.reply": "答复",
     "option.testconnect.timeout": "请求超时",
     "option.testconnect.notjson": "响应不是合法的 JSON（地址可能不是 API 根路径）",
-        "option.group.basic": "基本",
+    "option.group.basic": "基本",
     "option.group.model": "模型与接口",
     "option.group.media": "图片与消息",
     "option.group.rhythm": "节奏与输出",
@@ -261,7 +261,8 @@ mod tests {
     "imageimport.error.cant.create.dir": "无法创建文件夹",
     "imageimport.error.folder.missing": "文件夹不存在",
     "imageimport.pick.title": "请选择",
-    "imageimport.summary": "成功复制：{0}张，失败：{1}张，总共：{2}张"
+    "imageimport.summary": "成功复制：{0}张，失败：{1}张，总共：{2}张",
+    "option.reset.key":"将会重置配置文件中的API Key,是否确认?"
 }"#,
         )
         .expect("不是合法的json");
