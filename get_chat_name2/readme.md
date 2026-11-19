@@ -8,5 +8,8 @@ modelName=AnyOCR
 serverUrl=AnyUrl
 apiKey=Key
 ```
+>apiKey设置为`!INENV!`后程序会从`GET_CHAT_NAME2_API_KEY`环境变量获取API-Key
+
+
 > [!info]
 > 在[qqpilot-dsh-plugin](https://github.com/QQPilotOrganization/qqpilot-dsh-plugin___)使用时需要修改程序名称为`get_chat_name.exe`否则无法正常识别。
