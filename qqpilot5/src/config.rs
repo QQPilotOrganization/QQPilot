@@ -378,7 +378,7 @@ mod tests {
     #[test]
     fn parses_shipped_style_config() {
         let path = write_temp(
-            "qqpilot5-config-ok.ini",
+            "qqpilot5-config-ok1.ini",
             "[general]\nversion = 9.9.9\nname=neko\nwidth = 1285\nheight = 720\n\
              scale=1.25\nscroll = 9\ntab_times = 3\nwithimage = TRUE\nautologin = false\n\
              autofocusing = true\natdetect = true\nsendimagepossibility = 42\n\
@@ -455,18 +455,22 @@ mod tests {
         assert_eq!(config.width, Config::default().width);
         assert_eq!(config.server_url, Config::default().server_url);
     }
+    static CHANGING_ENV: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
     #[test]
     fn get_api_key_in_config() {
+
         let path = write_temp("qqpilot5-config-ok.ini", "[general]\napi_key=123456789");
         let config = Config::load(&path);
         assert_eq!(config.api_key, "123456789");
     }
     #[test]
     fn get_api_key_in_env() {
+        let _guard = CHANGING_ENV.lock().unwrap();
+
         unsafe { std::env::set_var("QQPILOT_LLM_API_KEY", "2358989") };
         let path = write_temp(
-            "qqpilot5-config-ok.ini",
+            "qqpilot5-config-env.ini",
             "[general]\napi_key=123456789\napi_key_in_env=true",
         );
         let config = Config::load(&path);
@@ -475,10 +479,12 @@ mod tests {
     #[test]
     #[should_panic]
     fn get_api_key_in_env_not_exist() {
+        let _guard = CHANGING_ENV.lock().unwrap();
+
         unsafe { std::env::set_var("QQPILOT_LLM_API_KEY", "2358989") };
         unsafe { std::env::remove_var("QQPILOT_LLM_API_KEY"); };
         let path = write_temp(
-            "qqpilot5-config-ok.ini",
+            "qqpilot5-config-env-not-exist.ini",
             "[general]\napi_key=123456789\napi_key_in_env=true",
         );
          Config::load(&path);

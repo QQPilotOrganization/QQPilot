@@ -449,7 +449,7 @@ dependencies = [
 
 [[package]]
 name = "get_chat_name2"
-version = "0.1.0"
+version = "1.5.21"
 dependencies = [
  "base64",
  "configparser",

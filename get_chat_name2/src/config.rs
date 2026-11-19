@@ -8,7 +8,7 @@
 //!
 //! 也就是把相对矩形当成"QQ 窗口内部的相对位置"，并假定窗口左上角在屏幕 (0,0)。
 
-use std::{path::Path};
+use std::path::Path;
 
 use configparser::ini::Ini;
 
@@ -19,6 +19,7 @@ const SECTION: &str = "general";
 const DEFAULT_WIDTH: i32 = 1285;
 const DEFAULT_HEIGHT: i32 = 720;
 const DEFAULT_SCALE: f64 = 1.0;
+const GET_CHAT_NAME2_API_KEY: &str = "GET_CHAT_NAME2_API_KEY";
 
 /// 界面换算要用的配置。
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -48,7 +49,6 @@ impl Default for Config {
     }
 }
 
-
 impl ConfigOCR {
     pub fn load(path: &Path) -> Self {
         let mut ini = Ini::new();
@@ -64,11 +64,18 @@ impl ConfigOCR {
         let api_key = ini
             .get(SECTION, "apiKey")
             .filter(|value| *value != String::from(""))
+            .map(|value| {
+                if *value == String::from("!INENV!") {
+                    std::env::var(GET_CHAT_NAME2_API_KEY).unwrap_or(value)
+                } else {
+                    value
+                }
+            })
             .unwrap_or(String::from("None"));
-        Self{
-            model_name:model_name,
-            server_url:server_url,
-            api_key:api_key,
+        Self {
+            model_name: model_name,
+            server_url: server_url,
+            api_key: api_key,
         }
     }
 }
@@ -164,5 +171,41 @@ mod tests {
         let path = temp_file("lr-section.ini", "[other]\nwidth = 999\nscale = 2\n");
         let config = Config::load(&path);
         assert_eq!(config, Config::default());
+    }
+    static CHANGING_ENV: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    #[test]
+    fn api_key_in_env() {
+        let _guard = CHANGING_ENV.lock().unwrap();
+        unsafe { std::env::set_var(GET_CHAT_NAME2_API_KEY, "12312312") };
+        let path = temp_file(
+            "api-key.ini",
+            "[general]\nmodelName = abc\nserverUrl = d\napiKey=!INENV!\n",
+        );
+        let config = ConfigOCR::load(&path);
+        assert_eq!(config.api_key, "12312312");
+    }
+    #[test]
+    fn api_key_in_config() {
+        let _guard = CHANGING_ENV.lock().unwrap();
+        unsafe { std::env::set_var(GET_CHAT_NAME2_API_KEY, "12312312") };
+        let path = temp_file(
+            "api-key.ini",
+            "[general]\nmodelName = abc\nserverUrl = d\napiKey=123456\n",
+        );
+        let config = ConfigOCR::load(&path);
+        assert_eq!(config.api_key, "123456");
+    }
+    #[test]
+
+    fn api_key_in_env_then_config() {
+        let _guard = CHANGING_ENV.lock().unwrap();
+        unsafe { std::env::set_var(GET_CHAT_NAME2_API_KEY, "12312312") };
+        unsafe { std::env::remove_var(GET_CHAT_NAME2_API_KEY) };
+        let path = temp_file(
+            "api-key.ini",
+            "[general]\nmodelName = abc\nserverUrl = d\napiKey=!INENV!\n",
+        );
+        let config = ConfigOCR::load(&path);
+        assert_eq!(config.api_key, "!INENV!");
     }
 }
