@@ -444,7 +444,7 @@ static int ScreenshotRegionToPng(int left, int top, int width, int height, const
 }
 
 extern "C" __declspec(dllexport)
-int screenshot(int left, int top, int width, int height)
+int screenshot(int left, int top, int right, int bottom)
 {
 	// 1. 计算缩放比例
 	float scale = 1.0f;
@@ -462,7 +462,9 @@ int screenshot(int left, int top, int width, int height)
 	//    只抓目标矩形，直接写 png，不经过 BMP。
 	if (scale > 0.999f && scale < 1.001f)
 	{
-		const int fast = ScreenshotRegionToPng(left, top, width, height, out_file);
+		auto width = right - left;
+		auto height = bottom - top;
+		const int fast = ScreenshotRegionToPng(left, top,width, height, out_file);
 		if (fast >= 0)
 		{
 			return fast;
@@ -488,7 +490,7 @@ int screenshot(int left, int top, int width, int height)
 
 	// 5. 执行裁剪
 	// 传入正确的原图尺寸 (img_w, img_h) 和 用户想要的裁剪参数 (left, top, width, height)
-	auto cropped_opt = cropImage(image, img_w, img_h, channels, left, top, width, height);
+	auto cropped_opt = cropImage(image, img_w, img_h, channels, left, top, right, bottom);
 
 	// 释放源图片内存 (stb_image 分配的必须用 stbi_image_free)
 	stbi_image_free(image);
@@ -500,8 +502,8 @@ int screenshot(int left, int top, int width, int height)
 
 	unsigned char* cropped_ptr = cropped_opt.value();
 
-	int final_w = width;
-	int final_h = height;
+	int final_w = right;
+	int final_h = bottom;
 
 	// 简单的边界钳制逻辑复现，确保写入尺寸正确
 	if (left < 0) left = 0;

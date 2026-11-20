@@ -192,6 +192,8 @@ fn main() {
         (settings.height as f32 * settings.scale) as i32,
     );
 
+    log::debug(format!("window size : {:?}",size));
+
     // 聊天列表实际区域
     let chat_list = positions::to_actual_size(positions::CHAT_LIST_BBOX_RELATIVE_SIZE, size);
     // 聊天区域实际区域
@@ -233,27 +235,17 @@ fn main() {
         );
         let _ = std::io::stdout().flush();
 
-        let mut contain = if settings.at_detect {
-            // vision::screenshot(at_place);
-            vision::screenshot((0, 0, at_place.2, at_place.3));
-            // panic!();
-            vision::contains_red_dot(vision::rect(at_place))
-        } else {
-            vision::screenshot((0, 0, chat_list.2, chat_list.3));
-            vision::contains_red_dot(vision::rect(chat_list))
-        };
+        let mut  contain = contains_red_dot(settings, chat_list, at_place);
 
         if contain == (0, 0) {
             sleep::ms(2000);
             continue;
         }
 
+
+        //防抖
         sleep::ms(500);
-        contain = if settings.at_detect {
-            vision::contains_red_dot(vision::rect(at_place))
-        } else {
-            vision::contains_red_dot(vision::rect(chat_list))
-        };
+        contain=contains_red_dot(settings, chat_list, at_place);
         if contain == (0, 0) {
             continue;
         }
@@ -278,7 +270,10 @@ fn main() {
         sleep::ms(500);
 
         vision::screenshot(copy_button_possible);
+
+        
         sleep::ms(1000);
+        // panic!("{:?}",copy_button_possible);
         clipboard::set_text("");
 
         let copy_points: Vec<(u32, u32)> =
@@ -458,6 +453,41 @@ fn main() {
     let _ = auto_focus_thread.join();
 }
 
+fn contains_red_dot(
+    settings: &config::Config,
+    chat_list: (i32, i32, i32, i32),
+    at_place: (i32, i32, i32, i32),
+) -> (u32, u32) {
+    let mut contain=if settings.at_detect {
+        // vision::screenshot(at_place);
+        vision::screenshot(at_place);
+        sleep::ms(200);
+
+        vision::contains_red_dot(vision::rect((
+            0,
+            0,
+            at_place.2 - at_place.0,
+            at_place.3 - at_place.1,
+        )))
+    } else {
+        vision::screenshot(chat_list);
+        sleep::ms(200);
+        vision::contains_red_dot(vision::rect((
+            0,
+            0,
+            chat_list.2 - chat_list.0,
+            chat_list.3 - chat_list.1,
+        )))
+    };
+    if contain==(0,0)
+    {
+        return (0,0);
+    }
+    contain.0+=(if settings.at_detect {at_place.0} else{chat_list.0}).abs() as u32; 
+    contain.1+=(if settings.at_detect {at_place.1} else{chat_list.1}).abs() as u32; 
+    contain
+}
+
 fn upload_got_image(
     translate: &serde_json::Value,
     upload_image_possible: (i32, i32, i32, i32),
@@ -482,6 +512,7 @@ fn upload_image_without_send(upload_image_possible: RectI) {
         .ok()
         .and_then(|path| path.parent().map(|dir| dir.join("Images")))
         .unwrap_or_else(|| PathBuf::from("Images"));
+    // log::debug(format!("image dir:{}",image_dir.));
     let files: Vec<PathBuf> = if image_dir.exists() {
         fs::read_dir(&image_dir)
             .map(|entries| {

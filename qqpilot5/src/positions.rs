@@ -17,10 +17,11 @@ pub type PointI = (i32, i32);
 /// 相对点 `(x, y)`。
 pub type RelativePoint = (f64, f64);
 
-/// 基准分辨率。
+/// 基准分辨率。在175%缩放下截取的QQ窗口(1280,720)大小
 pub const DEFAULT_SIZE: (i32, i32) = (2240, 1260);
-/// 部分按钮使用的第二基准分辨率。
+/// 部分按钮使用的第二基准分辨率。在100%缩放下截取的QQ窗口(1280,720)大小
 pub const DEFAULT_SIZE2: (i32, i32) = (1280, 720);
+
 
 // --- 绝对坐标（x1, y1, x2, y2）---
 
@@ -30,9 +31,9 @@ pub const SEND_BUTTON_BBOX_ABSOLUTE_SIZE: RectI = (2023, 1167, 2023 + 182, 1167 
 pub const COMMENT_SECTION_BBOX_ABSOLUTE_SIZE: RectI = (427, 1028, 427 + 2, 1028 + 2);
 pub const EXIT_CONVERSATION_BBOX_ABSOLUTE_SIZE: RectI = (367, 228, 367 + 31, 228 + 33);
 pub const SEND_IMAGE_BBOX_ABSOLUTE_SIZE: RectI = (663, 917, 663 + 44, 917 + 44);
-pub const COPY_BUTTON_BBOX_ABSOLUTE_SIZE: RectI = (1698, 1028, 1698 + 52, 1028 + 45);
+
 pub const AT_PLACE_BBOX_ABSOLUTE_SIZE: RectI = (79, 137,196+79, 942+137);
-pub const UPLOAD_IMAGE_POSSIBLE_BBOX_ABSOLUTE_SIZE: RectI = (366, 520, 733, 200);
+pub const UPLOAD_IMAGE_POSSIBLE_BBOX_ABSOLUTE_SIZE: RectI = (366, 520, 366+733, 520+200);
 pub const COPY_BUTTON_POSSIBLE_BBOX_ABSOLUTE_SIZE: RectI = UPLOAD_IMAGE_POSSIBLE_BBOX_ABSOLUTE_SIZE;
 
 // --- 拖拽与取消按钮位置 ---
@@ -59,8 +60,8 @@ pub const EXIT_CONVERSATION_BBOX_RELATIVE_SIZE: RelativeRect =
     to_relative_rect(EXIT_CONVERSATION_BBOX_ABSOLUTE_SIZE, DEFAULT_SIZE);
 pub const SEND_IMAGE_BBOX_RELATIVE_SIZE: RelativeRect =
     to_relative_rect(SEND_IMAGE_BBOX_ABSOLUTE_SIZE, DEFAULT_SIZE);
-pub const COPY_BUTTON_BBOX_RELATIVE_SIZE: RelativeRect =
-    to_relative_rect(COPY_BUTTON_BBOX_ABSOLUTE_SIZE, DEFAULT_SIZE);
+// pub const COPY_BUTTON_BBOX_RELATIVE_SIZE: RelativeRect =
+//     to_relative_rect(COPY_BUTTON_BBOX_ABSOLUTE_SIZE, DEFAULT_SIZE);
 pub const AT_PLACE_BBOX_RELATIVE_SIZE: RelativeRect =
     to_relative_rect(AT_PLACE_BBOX_ABSOLUTE_SIZE, DEFAULT_SIZE);
 pub const UPLOAD_IMAGE_POSSIBLE_BBOX_RELATIVE_SIZE: RelativeRect =

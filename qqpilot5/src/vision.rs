@@ -29,7 +29,7 @@ pub fn screenshot_with(x: i32, y: i32, width: i32, height: i32) -> bool {
     native::screen_capture().screenshot(x, y, width, height) != 1
 }
 
-/// 对应 `Vision.Screenshot((int,int,int,int))`。
+/// x1,y1,x2,y2
 pub fn screenshot(area: (i32, i32, i32, i32)) -> bool {
     screenshot_with(area.0, area.1, area.2, area.3)
 }
