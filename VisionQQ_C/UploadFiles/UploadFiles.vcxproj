@@ -226,9 +226,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="UploadFiles.cpp" />
+    <ClCompile Include="UploadFileTemplate.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ot.h" />
+    <ClInclude Include="UploadFileTemplate.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

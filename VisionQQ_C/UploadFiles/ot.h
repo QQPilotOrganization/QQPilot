@@ -18,6 +18,12 @@ struct Point
 // ------------------------------------------------------------------
 typedef int(__cdecl* PFN_fullScreenshot)();
 typedef int(__cdecl* PFN_screenshot)(int left, int top, int width, int height);
+//extern "C" __declspec(dllexport)
+//bool press(WORD vkKey);
+//extern "C" __declspec(dllexport)
+//WORD getVkKey(const char* key);
+typedef int(__cdecl* PFN_press)(WORD vkKey);
+typedef int(__cdecl* PFN_getVkKey)(const char* key);
 
 typedef int(__cdecl* PFN_matchTemplatesSelectedScaleBegin)(
     const char* imagePath, const char* templatePath,

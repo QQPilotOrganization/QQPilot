@@ -18,6 +18,8 @@
 #include <concepts>
 #include<utility>
 #include <array>
+
+#include "UploadFileTemplate.h"
 namespace fs = std::filesystem;
 
 
@@ -94,13 +96,14 @@ struct InputEventApi
 	HMODULE h = nullptr;
 	PFN_DPIAwarenessPrologue DPIAwarenessPrologue = nullptr;
 	PFN_Lclick               Lclick = nullptr;
-
+	PFN_press				 press = nullptr;
+	PFN_getVkKey			 getVkKey = nullptr;
 	bool Load(const wchar_t* dll = L"InputEvent.dll")
 	{
 		h = LoadLibraryW(dll);
 		if (!h) return false;
 		return Bind(h, "DPIAwarenessPrologue", DPIAwarenessPrologue)
-			&& Bind(h, "Lclick", Lclick);
+			and Bind(h, "Lclick", Lclick) and Bind(h,"press", press) and Bind(h,"getVkKey", getVkKey);
 	}
 	InputEventApi() = default;
 	InputEventApi(const
@@ -150,23 +153,7 @@ static constexpr Rectf toRelativRect(const RECT a, int width, int height)
 
 	return 	 { left,top,right,bottom };
 }
-//struct Rectf
-//{
-//	float    left;
-//	float    top;
-//	float    right;
-//	float    bottom;
-//
-//	Rectf(float left, float top, float right, float bottom) :left(left), top(top), right(right), bottom(bottom) {}
-//	Rectf(RECT a, int width, int height)
-//	{
-//		this->left = static_cast<float>(a.left) / static_cast<float>(width);
-//		this->top = static_cast<float>(a.top) / static_cast<float>(height);
-//		this->right = static_cast<float>(a.right) / static_cast<float>(width);
-//		this->bottom = static_cast<float>(a.bottom) / static_cast<float>(height);
-//	}
-//
-//};
+
 typedef std::pair<float, float> Pointf;
 static constexpr Pointf toRelativePoint(int x, int y, int width, int height)
 {
@@ -176,26 +163,10 @@ static constexpr Pointf toRelativePoint(int x, int y, int width, int height)
 
 }
 
-//pub fn to_actual_size(relative: RelativeRect, size : (i32, i32)) -> RectI {
-//	(
-//		(relative.0 * size.0 as f64).round_ties_even() as i32,
-//		(relative.1 * size.1 as f64).round_ties_even() as i32,
-//		(relative.2 * size.0 as f64).round_ties_even() as i32,
-//		(relative.3 * size.1 as f64).round_ties_even() as i32,
-//		)
-//}
-//
-///// 相对点 -> 实际点。
-//pub fn to_actual_point(relative: RelativePoint, size : (i32, i32)) -> PointI {
-//	(
-//		(relative.0 * size.0 as f64).round_ties_even() as i32,
-//		(relative.1 * size.1 as f64).round_ties_even() as i32,
-//		)
-//}
 
 static std::array<int, 4> toActualSize(const Rectf& relative, const std::pair<int, int>& size)
 {
-	auto a = static_cast<int>(std::roundf(relative.at(0) * size.first));
+	
 	return {
 			static_cast<int>(std::roundf(relative.at(0) * size.first)),
 			static_cast<int>(std::roundf(relative.at(1) * size.second)),
@@ -215,16 +186,11 @@ static std::pair<int, int> toActualPoint(Pointf relative, const std::pair<int, i
 constexpr int DefaultSizeW = 1280;
 constexpr int DefaultSizeH = 720;
 
-constexpr int BasicWidth = 1920;
-constexpr int BasicHeight = 1080;
+constexpr int BasicWidth = 2248;
+constexpr int BasicHeight = 1260;
 
-constexpr RECT UPLOAD_FILE_POSSIBLE_BBOX_ABSOLUTE_SIZE = { 464,659,464 + 69,659 + 112 };
+constexpr RECT UPLOAD_FILE_POSSIBLE_BBOX_ABSOLUTE_SIZE = { 350,920,350+859,920+99 };
 constexpr Rectf UPLOAD_FILE_POSSIBLE_BBOX_RELATIVE_SIZE = toRelativRect(UPLOAD_FILE_POSSIBLE_BBOX_ABSOLUTE_SIZE, BasicWidth, BasicHeight);
-
-constexpr int readyToSendX = 945;
-constexpr int readyToSendY = 763;
-
-constexpr Pointf  readyToSendRelativePoint = toRelativePoint(readyToSendX, readyToSendY, BasicWidth, BasicHeight);
 
 // 截图/模板的固定文件名：DLL 内部写死，改不了。
 const char* const SCREENSHOT_FILE = "screenshot.png";
@@ -444,8 +410,6 @@ static bool find_file_icon(
 struct Options
 {
 	std::vector<fs::path> inputs;
-	int ready_x = readyToSendX;
-	int ready_y = readyToSendY;
 	int tolerance = DefaultTolerance;
 	float scale = 0.0f; // >0 时覆盖 config.ini
 	int wait_ms = 5000;
@@ -468,7 +432,6 @@ static void print_usage()
 #ifdef _DEBUG
 
 		<< "选项:\n"
-		<< "  --ready X,Y      发送按钮的位置（默认 " << readyToSendX << "," << readyToSendY
 		<< "）\n"
 		<< "  --tolerance N    模板匹配容差（默认 " << DefaultTolerance << "）\n"
 		<< "  --scale F        覆盖 config.ini 里的 scale\n"
@@ -541,20 +504,7 @@ static bool parse_args(int argc, wchar_t** argv, Options& options, bool& show_he
 			options.screenshotOnly = true;
 			continue;
 		}
-		if (arg == L"--ready")
-		{
-			const wchar_t* value = value_after("--ready");
-			if (value == nullptr)
-			{
-				return false;
-			}
-			if (not parse_pair(value, options.ready_x, options.ready_y))
-			{
-				std::cerr << "错误: --ready 要写成 X,Y" << std::endl;
-				return false;
-			}
-			continue;
-		}
+	
 		if (arg == L"--tolerance")
 		{
 			const wchar_t* value = value_after("--tolerance");
@@ -565,7 +515,7 @@ static bool parse_args(int argc, wchar_t** argv, Options& options, bool& show_he
 			options.tolerance = std::stoi(value);
 			continue;
 		}
-		if (arg == L"--scale")
+		if (arg == L"--scale")											   
 		{
 			const wchar_t* value = value_after("--scale");
 			if (value == nullptr)
@@ -693,6 +643,8 @@ int wmain(int argc, wchar_t** argv)
 	}
 
 
+	bin2cpp::getUploadFileTemplatePngFile().save("file.png");
+
 	Settings settings = read_settings();
 
 
@@ -703,10 +655,6 @@ int wmain(int argc, wchar_t** argv)
 
 	std::pair<int, int> actualWindowSize = std::make_pair<int, int>(settings.width * settings.scale, settings.height * settings.scale);
 	std::array<int, 4> uploadFilePossibleBBoxActualSize = toActualSize(UPLOAD_FILE_POSSIBLE_BBOX_RELATIVE_SIZE, actualWindowSize);
-	std::pair<int, int> readyToSendButtonActualPos = toActualPoint(readyToSendRelativePoint, actualWindowSize);
-
-	options.ready_x = readyToSendButtonActualPos.first;
-	options.ready_y = readyToSendButtonActualPos.second;
 
 	if (options.screenshotOnly)
 	{
@@ -806,7 +754,7 @@ int wmain(int argc, wchar_t** argv)
 	}
 	if (not wait_for_dialog(false, options.wait_ms))
 	{
-		return fail("上传对话框没有关掉，文件可能没选上", 6);
+		return fail("上传对话框未关闭", 6);
 	}
 	sleep_ms(1000);
 
@@ -816,13 +764,9 @@ int wmain(int argc, wchar_t** argv)
 		log_line("--no-send");
 		return 0;
 	}
-	log_line("点击发送 (" + std::to_string(options.ready_x) + "," + std::to_string(options.ready_y) + ")");
-
-	if (not inputEvent.Lclick(static_cast<unsigned>(options.ready_x), static_cast<unsigned>(options.ready_y)))
-	{
-		return fail("点击发送失败", 4);
-	}
-
+	sleep_ms(1000);
+	inputEvent.press(inputEvent.getVkKey("enter"));
+	//inputEvent
 	log_line("完成。");
 	uploadFile.escapeFn();
 

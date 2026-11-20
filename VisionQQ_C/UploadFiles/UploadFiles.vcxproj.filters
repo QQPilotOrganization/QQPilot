@@ -18,9 +18,15 @@
     <ClCompile Include="UploadFiles.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="UploadFileTemplate.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ot.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="UploadFileTemplate.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
