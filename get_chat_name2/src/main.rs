@@ -14,7 +14,7 @@ const DEFAULT_CROP: &str = "cropped.jpg";
 const DEFAULT_CONFIG: &str = "config.ini";
 
 /// 自身更多设置的配置文件
-const DEFAULT_CONFIG_SELF: &str = "getChatName2.ini";
+const DEFAULT_CONFIG_SELF: &str = "getChatName.ini";
 use base64::engine::general_purpose::STANDARD;
 use image::ImageFormat;
 use std::io::Cursor;
@@ -64,6 +64,22 @@ const CHAT_NAME_BBOX_RELATIVE_SIZE: (f64, f64, f64, f64) =
     to_relative_rect(CHAT_NAME_BBOX_POSSIBLE_SIZE, DEFAULT_SIZE);
 
 fn main() {
+    for arg in std::env::args().into_iter()
+    {
+        if arg=="-h" || arg=="--help"
+        {
+            println!("截图后读取指定位置的群聊名称。");
+            return;
+        }
+    }
+    if !std::fs::exists(DEFAULT_CONFIG_SELF).unwrap_or(false)
+    {
+        // std::fs::write(DEFAULT_CONFIG_SELF, )
+        println!("不存在配置文件，自动生成。");
+        config::ConfigOCR::default().to_ini(DEFAULT_CONFIG_SELF).expect("写入文件失败");
+        return;
+    }
+
     let buffer = capture_display().unwrap();
     let image = image::RgbaImage::from_raw(buffer.width, buffer.height, buffer.pixels)
         .expect("failed to convert.");
@@ -93,7 +109,7 @@ fn main() {
         crop_area.3 as u32,
     );
 
-    let base64image = to_data_url(&cropped_image, ImageFormat::Jpeg).expect("转换Bases64失败");
+    let base64image = to_data_url(&cropped_image, ImageFormat::Jpeg).expect("转换Base64失败");
 
     let message = completion::ChatRequest {
         model: config_self.model_name.clone(),

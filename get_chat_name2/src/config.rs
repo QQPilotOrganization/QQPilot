@@ -19,8 +19,10 @@ const SECTION: &str = "general";
 const DEFAULT_WIDTH: i32 = 1285;
 const DEFAULT_HEIGHT: i32 = 720;
 const DEFAULT_SCALE: f64 = 1.0;
-const GET_CHAT_NAME2_API_KEY: &str = "GET_CHAT_NAME2_API_KEY";
-
+const API_KEY_ENV_STR: &str = "GET_CHAT_NAME_API_KEY";
+        const MODELNAME: &str = "modelName";
+        const SERVERURL: &str = "serverUrl";
+        const APIKEY: &str = "apiKey";
 /// 界面换算要用的配置。
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Config {
@@ -48,25 +50,46 @@ impl Default for Config {
         }
     }
 }
-
+impl Default for ConfigOCR {
+    fn default() -> Self {
+        Self {
+            model_name: String::from("model Name"),
+            api_key: String::from("sk-1*******************************2"),
+            server_url: String::from("https://example.com/v1"),
+        }
+    }
+}
+impl ConfigOCR {
+    pub fn to_ini(&self,path:&str)-> Result<(), Box<dyn std::error::Error>> {
+        let mut config = Ini::new();
+        config.set(SECTION, MODELNAME,Some(self.model_name.clone()));
+        config.set(SECTION, APIKEY,Some(self.api_key.clone()));
+        config.set(SECTION, SERVERURL,Some(self.server_url.clone()));
+        let write_options = configparser::ini::WriteOptions::new_with_params(true, 2, 1);
+        config.pretty_write(path, &write_options)?;
+        Ok(())
+    }
+}
 impl ConfigOCR {
     pub fn load(path: &Path) -> Self {
         let mut ini = Ini::new();
         let _ = ini.load(path);
         let model_name = ini
-            .get(SECTION, "modelName")
+            .get(SECTION, MODELNAME)
             .filter(|value| *value != String::from(""))
             .expect("模型名称无效");
+
         let server_url = ini
-            .get(SECTION, "serverUrl")
+            .get(SECTION, SERVERURL)
             .filter(|value| *value != String::from(""))
             .expect("提供商无效");
+        
         let api_key = ini
-            .get(SECTION, "apiKey")
+            .get(SECTION, APIKEY)
             .filter(|value| *value != String::from(""))
             .map(|value| {
                 if *value == String::from("!INENV!") {
-                    std::env::var(GET_CHAT_NAME2_API_KEY).unwrap_or(value)
+                    std::env::var(API_KEY_ENV_STR).unwrap_or(value)
                 } else {
                     value
                 }
@@ -176,7 +199,7 @@ mod tests {
     #[test]
     fn api_key_in_env() {
         let _guard = CHANGING_ENV.lock().unwrap();
-        unsafe { std::env::set_var(GET_CHAT_NAME2_API_KEY, "12312312") };
+        unsafe { std::env::set_var(API_KEY_ENV_STR, "12312312") };
         let path = temp_file(
             "api-key.ini",
             "[general]\nmodelName = abc\nserverUrl = d\napiKey=!INENV!\n",
@@ -187,7 +210,7 @@ mod tests {
     #[test]
     fn api_key_in_config() {
         let _guard = CHANGING_ENV.lock().unwrap();
-        unsafe { std::env::set_var(GET_CHAT_NAME2_API_KEY, "12312312") };
+        unsafe { std::env::set_var(API_KEY_ENV_STR, "12312312") };
         let path = temp_file(
             "api-key.ini",
             "[general]\nmodelName = abc\nserverUrl = d\napiKey=123456\n",
@@ -199,8 +222,8 @@ mod tests {
 
     fn api_key_in_env_then_config() {
         let _guard = CHANGING_ENV.lock().unwrap();
-        unsafe { std::env::set_var(GET_CHAT_NAME2_API_KEY, "12312312") };
-        unsafe { std::env::remove_var(GET_CHAT_NAME2_API_KEY) };
+        unsafe { std::env::set_var(API_KEY_ENV_STR, "12312312") };
+        unsafe { std::env::remove_var(API_KEY_ENV_STR) };
         let path = temp_file(
             "api-key.ini",
             "[general]\nmodelName = abc\nserverUrl = d\napiKey=!INENV!\n",
