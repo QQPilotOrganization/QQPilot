@@ -5,12 +5,18 @@
 
 use crate::config;
 use crate::localization;
+use crate::log;
 use crate::native::{self, Point, Rect};
 
 /// 抓屏结果文件名（DLL 内部写死）。
 pub const SCREENSHOT_FILE: &str = "screenshot.png";
 /// `Vision` 里 `DEFAULT_SCALE` 的取值，用于换算 `dScale`。
 const DEFAULT_SCALE: f32 = 1.0;
+
+/// 深色模式下 QQ 的主背景色（对应 `Vision/darkModeCompact.h` 的 `DARK_MODE_MOST_COLOR`）。
+const DARK_MODE_BACKGROUND: (u8, u8, u8, u8) = (34, 34, 34, 255);
+/// 取主色时的采样比例：缩到 10% 足够判断，速度快很多。
+const MOST_COLOR_RESIZE: f32 = 0.1;
 
 /// `dScale = scale / DEFAULT_SCALE`。
 fn d_scale() -> f32 {
@@ -114,6 +120,30 @@ pub fn find_templates_by_nearing_d_scale(
     Ok(results)
 }
 
+/// 深色模式适配：截图整体是深色背景时先反色一次，浅色模式做的模板才能对上。
+///
+/// 判断依据就是整张图的主色 —— `getMostColor` 返回 `(34,34,34,255)`（#222222，
+/// 也就是 `darkModeCompact.h` 里的 `DARK_MODE_MOST_COLOR`）时才反色，反色结果原地
+/// 写回 `image_path`。返回是否真的反色了。
+fn adapt_dark_mode(image_path: &str) -> bool {
+    let vision = native::vision_dll();
+    let most = vision.get_most_color(image_path, MOST_COLOR_RESIZE);
+    if (most.r, most.g, most.b, most.a) != DARK_MODE_BACKGROUND {
+        return false;
+    }
+
+    log::debug(format!(
+        "检测到深色模式（主色 {},{},{},{}），反色后再做模板匹配",
+        most.r, most.g, most.b, most.a
+    ));
+
+    if !vision.invert_image(image_path) {
+        log::warn(format!("深色模式反色失败：{image_path}"));
+        return false;
+    }
+    true
+}
+
 /// 对应 `Vision.FindTemplates`：先试 `dScale` 邻域，不够再退回多尺度全扫。
 pub fn find_templates(
     image_path: &str,
@@ -121,6 +151,9 @@ pub fn find_templates(
     tolerance: i32,
     max_count: i32,
 ) -> Result<Vec<(u32, u32)>, String> {
+    // 深色模式下先把截图反色回来（模板是浅色模式截的）。
+    adapt_dark_mode(image_path);
+
     let results =
         find_templates_by_nearing_d_scale(image_path, template_path, tolerance, max_count)?;
     // if results.len() >= max_count.max(0) as usize {

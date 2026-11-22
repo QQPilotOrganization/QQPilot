@@ -21,4 +21,6 @@
 #include<future>      //std::future std::promise
 #include<thread>      //std::thread
 #include<utility>
+#include<memory>
+#include"color.h"
 #endif //PCH_H

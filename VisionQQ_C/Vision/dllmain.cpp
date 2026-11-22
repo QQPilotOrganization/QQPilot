@@ -1,7 +1,8 @@
 ﻿// dllmain.cpp : 定义 DLL 应用程序的入口点。
 #include "pch.h"
 #include "dllmain.h"
-
+#include "pixel.h"
+#include "stbImage.h"
 #ifdef _WIN32
 #define EXPORT extern "C" __declspec(dllexport)
 #else
@@ -23,42 +24,22 @@ BOOL APIENTRY DllMain(HMODULE hModule,
 	return TRUE;
 }
 
-struct Color
-{
-	unsigned r, g, b, a;
-};
-std::array<unsigned char, 4> getPixel(const unsigned char* image,const int x,const int y,const int width,int channels)
-{
-	const unsigned char* pixelOffset = image + (x + y * width) * channels;
-	std::array<unsigned char, 4> result{ 0 };
-	result[0] = pixelOffset[0];
-	if (channels >= 2) {
-		result[1] = pixelOffset[1];
-	}
+static int MatchTemplateByFactors(const int numFactors, const float factors[], PackedImage& originalTplObj, int template_w, int template_h, int img_w, int img_h, int template_channels, PackedImage& imgObj, int tolerance, int count);
 
-	if (channels >= 3) {
-		result[2] = pixelOffset[2];
-	}
-
-	if (channels >= 4) {
-		result[3] = pixelOffset[3];
-	}
-
-	return result;
-
-}
-static std::optional<unsigned char*> resize(const PackedImage& input, float factor) {
+/// 缩放模板；失败（尺寸不合法/分配失败）时返回空指针。
+static StbiImage resize(const PackedImage& input, float factor) {
     int new_width = static_cast<int>(input.width * factor);
     int new_height = static_cast<int>(input.height * factor);
 
     // 1. 边界检查
     if (new_width <= 0 || new_height <= 0) {
-        return std::nullopt; // 直接使用 std::nullopt
+        return {};
     }
 
     // 2. 执行缩放
-    // stbir_resize_uint8_linear 在目标指针为 nullptr 时会自动 malloc
-    unsigned char* output = stbir_resize_uint8_linear(
+    // stbir_resize_uint8_linear 在目标指针为 nullptr 时会自动 malloc，
+    // 这里用 StbiImage 接管（stbi_image_free 就是 free）
+    return StbiImage{ stbir_resize_uint8_linear(
         input.src,
         input.width,
         input.height,
@@ -68,19 +49,9 @@ static std::optional<unsigned char*> resize(const PackedImage& input, float fact
         new_height,
         0,                  // dst_stride (0 = 紧凑)
         STBIR_RGBA          // 格式：必须与后续匹配逻辑一致
-    );
-
-    // 3. 检查分配是否成功
-    if (output == nullptr) {
-        return std::nullopt;
-    }
-
-    return output; // 返回包含指针的 optional
+    ) };
 }
-EXPORT bool scale(const char* srcImage,float factor,const char* destImage)
-{
-    return false;
-}
+
 
 
 Point contains(RECT rect, const Color& color, const char* path);
@@ -101,8 +72,11 @@ Point contains(RECT rect, const Color& color,const char* path)
     //std::printf("%s\n", path);
 	int img_w, img_h, channels;
     //std::printf("%ld,%ld,%ld,%ld\n", rect.left, rect.right, rect.top, rect.bottom);
-	Image* image = stbi_load(path, &img_w, &img_h, &channels, 0);
-    //printf("image:%d\n", image);
+    StbiImage image = stbiLoad(path, &img_w, &img_h, &channels, 0);
+    if (!image)
+    {
+        return { 0,0 };
+    }
     if (rect.bottom == 0 and rect.right == 0 and rect.left == 0 and rect.top == 0)
     {
         rect = { 0,0,img_w,img_h };
@@ -126,18 +100,16 @@ Point contains(RECT rect, const Color& color,const char* path)
 	{
 		for (int y = rect.top; y < rect.bottom; ++y)
 		{
-			std::array<Image, 4> result = getPixel(image, x, y, img_w, channels);
+			std::array<Image, 4> result = getPixel(image.get(), x, y, img_w, channels);
 
 			if (result[0] == color.r and result[1] == color.g and result[2] == color.b)
 			{
-				stbi_image_free(image);
 				return{ static_cast<unsigned>(x),static_cast<unsigned>(y) };
 			}
 		}
 
 	}
     end:
-	stbi_image_free(image);
 	return{ 0,0 };
 }
 static std::vector<Point> revelants;
@@ -203,7 +175,6 @@ static double matchScore(const PackedImage& image, const PackedImage& templ, Poi
 // DLL 导出接口
 // ==========================================
 void _matchTemplate(const PackedImage& imgObj, const PackedImage& tplObj, int tolerance,int maxCount, std::vector<Point>& dest = revelants);
-int MatchTemplateByFactors(const int numFactors, const float  factors[16], PackedImage& originalTplObj, int template_w, int template_h, int img_w, int img_h, int template_channels, PackedImage& imgObj, int tolerance, int count, unsigned char* image_data, unsigned char* template_data);
 static bool isPointDuplicate(const std::vector<Point>& existingPoints, const Point& newPt, int minDistance) {
     for (const auto& pt : existingPoints) {
         int dx = static_cast<int>(pt.x) - static_cast<int>(newPt.x);
@@ -215,6 +186,7 @@ static bool isPointDuplicate(const std::vector<Point>& existingPoints, const Poi
     }
     return false;
 }
+
 EXPORT
 int matchTemplatesSelectedScaleBegin(const char* imagePath, const char* templatePath, int tolerance, int count,float scale)
 {
@@ -225,7 +197,7 @@ int matchTemplatesSelectedScaleBegin(const char* imagePath, const char* template
 
     // 1. 加载大图 (只加载一次)
     int img_w, img_h, img_channels;
-    unsigned char* image_data = stbi_load(imagePath, &img_w, &img_h, &img_channels, 4);
+    StbiImage image_data = stbiLoad(imagePath, &img_w, &img_h, &img_channels, 4);
     if (!image_data) {
         return -2;
     }
@@ -233,18 +205,17 @@ int matchTemplatesSelectedScaleBegin(const char* imagePath, const char* template
 
     // 2. 加载原始模板 (只加载一次)
     int template_w, template_h, template_channels;
-    unsigned char* template_data = stbi_load(templatePath, &template_w, &template_h, &template_channels, 4);
+    StbiImage template_data = stbiLoad(templatePath, &template_w, &template_h, &template_channels, 4);
     if (!template_data) {
-        stbi_image_free(image_data);
         return -3;
     }
     template_channels = 4;
 
-    PackedImage imgObj = { image_data, img_w, img_h, img_channels };
-    PackedImage originalTplObj = { template_data, template_w, template_h, template_channels };
+    PackedImage imgObj = { image_data.get(), img_w, img_h, img_channels };
+    PackedImage originalTplObj = { template_data.get(), template_w, template_h, template_channels };
 
-    // 3. 多尺度循环
-    return MatchTemplateByFactors(numFactors, factors, originalTplObj, template_w, template_h, img_w, img_h, template_channels, imgObj, tolerance, count, image_data, template_data);
+    // 3. 多尺度循环（两块内存由上面的 StbiImage 负责释放）
+    return MatchTemplateByFactors(numFactors, factors, originalTplObj, template_w, template_h, img_w, img_h, template_channels, imgObj, tolerance, count);
 }
 
 EXPORT
@@ -257,7 +228,7 @@ int matchTemplatesMultiScaleBegin(const char* imagePath, const char* templatePat
 
     // 1. 加载大图 (只加载一次)
     int img_w, img_h, img_channels;
-    unsigned char* image_data = stbi_load(imagePath, &img_w, &img_h, &img_channels, 4);
+    StbiImage image_data = stbiLoad(imagePath, &img_w, &img_h, &img_channels, 4);
     if (!image_data) {
         return -2;
     }
@@ -265,29 +236,29 @@ int matchTemplatesMultiScaleBegin(const char* imagePath, const char* templatePat
 
     // 2. 加载原始模板 (只加载一次)
     int template_w, template_h, template_channels;
-    unsigned char* template_data = stbi_load(templatePath, &template_w, &template_h, &template_channels, 4);
+    StbiImage template_data = stbiLoad(templatePath, &template_w, &template_h, &template_channels, 4);
     if (!template_data) {
-        stbi_image_free(image_data);
         return -3;
     }
     template_channels = 4;
 
-    PackedImage imgObj = { image_data, img_w, img_h, img_channels };
-    PackedImage originalTplObj = { template_data, template_w, template_h, template_channels };
+    PackedImage imgObj = { image_data.get(), img_w, img_h, img_channels };
+    PackedImage originalTplObj = { template_data.get(), template_w, template_h, template_channels };
 
-    // 3. 多尺度循环
-    return MatchTemplateByFactors(numFactors, factors, originalTplObj, template_w, template_h, img_w, img_h, template_channels, imgObj, tolerance, count, image_data, template_data);
+    // 3. 多尺度循环（两块内存由上面的 StbiImage 负责释放）
+    return MatchTemplateByFactors(numFactors, factors, originalTplObj, template_w, template_h, img_w, img_h, template_channels, imgObj, tolerance, count);
 }
 
-static int MatchTemplateByFactors(const int numFactors, const float factors[], PackedImage& originalTplObj, int template_w, int template_h, int img_w, int img_h, int template_channels, PackedImage& imgObj, int tolerance, int count, unsigned char* image_data, unsigned char* template_data)
+
+
+static int MatchTemplateByFactors(const int numFactors, const float factors[], PackedImage& originalTplObj, int template_w, int template_h, int img_w, int img_h, int template_channels, PackedImage& imgObj, int tolerance, int count)
 {
     for (int i = 0; i < numFactors; ++i) {
         float factor = factors[i];
         std::cout << "f " << factor << "\r";
 
         PackedImage currentTplObj;
-        unsigned char* resizedData = nullptr;
-        bool needsFree = false;
+        StbiImage resizedData;   // 只有缩放时才会分配，离开作用域自动释放
         int currentTplW = 0;
         int currentTplH = 0;
 
@@ -299,80 +270,44 @@ static int MatchTemplateByFactors(const int numFactors, const float factors[], P
         }
         else {
             // 其他倍数进行 Resize
-            auto optPtr = resize(originalTplObj, factor);
-            if (!optPtr.has_value()) {
+            resizedData = resize(originalTplObj, factor);
+            if (!resizedData) {
                 continue; // 缩放失败，跳过
             }
-
-            resizedData = optPtr.value();
-            needsFree = true; // 标记需要释放内存
 
             currentTplW = static_cast<int>(template_w * factor);
             currentTplH = static_cast<int>(template_h * factor);
 
             // 如果缩放后的模板比大图还大，跳过 (避免无效计算)
             if (currentTplW > img_w || currentTplH > img_h) {
-                free(resizedData); // 【关键】立即释放
-                continue;
+                continue; // resizedData 自动释放
             }
 
-            currentTplObj = { resizedData, currentTplW, currentTplH, template_channels };
+            currentTplObj = { resizedData.get(), currentTplW, currentTplH, template_channels };
         }
 
         // --- 核心逻辑：匹配 -> 去重 -> 合并 ---
 
-        // 1. 记录当前全局列表的大小
-        size_t countBefore = revelants.size();
-
-        // 2. 调用现有的 _matchTemplate (它会向 revelants 追加新结果)
-        //std::vector<Point> temp = {};
+        // 1. 调用现有的 _matchTemplate (它会向 dest 追加新结果)
         std::vector<Point> newMatches;
 
         _matchTemplate(imgObj, currentTplObj, tolerance, count, newMatches);
         if (newMatches.size() >= count)
         {
             std::copy(newMatches.begin(), newMatches.end(), std::back_inserter(revelants));
-            if (needsFree && resizedData)
-            {
-                free(resizedData);
-                resizedData = nullptr;
-            }
-            goto end;
+            // 原来这里是 goto end 手动 free，现在交给 StbiImage
+            return static_cast<int>(revelants.size());
         }
 
-        // 3. 提取本次循环新增的结果
-        //for (size_t k = countBefore; k < revelants.size(); ++k) {
-        //    newMatches.push_back(revelants[k]);
-        //}
-        // 4. 回滚全局列表到添加前的状态 (因为我们要手动添加去重后的结果)
-        //revelants.resize(countBefore);
-
-        // 5. 动态计算去重阈值 (基于当前模板大小，例如模板宽度的 20%)
+        // 2. 动态计算去重阈值 (基于当前模板大小，例如模板宽度的 20%)
         int dedupThreshold = static_cast<int>(currentTplW * 0.2f);
         if (dedupThreshold < 5) dedupThreshold = 5; // 最小阈值保护
 
-        // 6. 将新结果去重后加入全局列表
-        //for (const auto& pt : newMatches) {
-        //    // 检查是否与【已经确认保留】的点重复
-        //    if (!isPointDuplicate(revelants, pt, dedupThreshold)) {
-        //        revelants.push_back(pt);
-        //    }
-        //}
+        // 3. 将新结果去重后加入全局列表
         std::copy_if(newMatches.begin(), newMatches.end(), std::back_inserter(revelants), [dedupThreshold](const Point& pt) {return !isPointDuplicate(revelants, pt, dedupThreshold); });
-
-        // 7. 【关键】如果当前模板是缩放生成的，释放内存
-        if (needsFree && resizedData) {
-            free(resizedData);
-            resizedData = nullptr;
-        }
     }
 
-end:
-    // 4. 清理原始图像内存
-    stbi_image_free(image_data);
-    stbi_image_free(template_data);
-
-    // 5. 返回最终去重后的总数
+    // 4. 返回最终去重后的总数
     return static_cast<int>(revelants.size());
 }
 
@@ -412,7 +347,7 @@ int matchTemplatesBegin(const char* imagePath, const char* templatePath, int tol
 
     // 1. 加载大图
     int img_w, img_h, img_channels;
-    unsigned char* image_data = stbi_load(imagePath, &img_w, &img_h, &img_channels, 4);
+    StbiImage image_data = stbiLoad(imagePath, &img_w, &img_h, &img_channels, 4);
     img_channels = 4;
     if (!image_data) {
         return -2; // 大图加载失败
@@ -420,27 +355,22 @@ int matchTemplatesBegin(const char* imagePath, const char* templatePath, int tol
 
     // 2. 加载模板图
     int template_w, template_h, template_channels;
-    unsigned char* template_data = stbi_load(templatePath, &template_w, &template_h, &template_channels, 4);
+    StbiImage template_data = stbiLoad(templatePath, &template_w, &template_h, &template_channels, 4);
     template_channels = 4;
     if (!template_data) {
-        stbi_image_free(image_data);
         return -3; // 模板加载失败
     }
 
     // 3. 基础检查
     if (img_w < template_w || img_h < template_h) {
-        stbi_image_free(image_data);
-        stbi_image_free(template_data);
         return -1; // 尺寸不够
     }
-    PackedImage imgObj = { image_data, img_w, img_h, img_channels };
-    PackedImage tplObj = { template_data, template_w, template_h, template_channels };
+    PackedImage imgObj = { image_data.get(), img_w, img_h, img_channels };
+    PackedImage tplObj = { template_data.get(), template_w, template_h, template_channels };
 
     _matchTemplate(imgObj, tplObj, tolerance,count,revelants);
 
-    // 5. 清理内存
-    stbi_image_free(image_data);
-    stbi_image_free(template_data);
+    // 4. 两块图像内存在这里随 StbiImage 析构释放
 
     return static_cast<int>(revelants.size());
 }

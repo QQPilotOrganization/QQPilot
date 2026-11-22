@@ -33,12 +33,27 @@
     <ClInclude Include="..\common\stb_image_resize2.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="darkModeCompact.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="color.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="pixel.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="pch.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="darkModeCompact.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="pixel.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

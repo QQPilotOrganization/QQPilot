@@ -37,6 +37,16 @@ pub struct Rect {
     pub bottom: i32,
 }
 
+/// `Vision/color.h` 的 `struct Color { unsigned char r, g, b, a; }`。
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Color {
+    pub r: u8,
+    pub g: u8,
+    pub b: u8,
+    pub a: u8,
+}
+
 // --- 加载辅助 ---
 
 /// 与 C# 版相同：先在可执行文件目录、再在当前工作目录找 DLL。
@@ -216,6 +226,8 @@ type MatchBeginScaledFn =
     unsafe extern "C" fn(*const std::ffi::c_char, *const std::ffi::c_char, i32, i32, f32) -> i32;
 type MatchNextFn = unsafe extern "C" fn(i32) -> Point;
 type MatchEndFn = unsafe extern "C" fn();
+type GetMostColorFn = unsafe extern "C" fn(*const std::ffi::c_char, f32) -> Color;
+type InvertedFn = unsafe extern "C" fn(*const std::ffi::c_char) -> bool;
 
 /// `Vision.dll`：红点检测与多尺度模板匹配。
 pub struct VisionDll {
@@ -226,6 +238,8 @@ pub struct VisionDll {
     match_selected_scale_begin: MatchBeginScaledFn,
     match_next: MatchNextFn,
     match_end: MatchEndFn,
+    get_most_color: GetMostColorFn,
+    inverted: InvertedFn,
     _lib: Library,
 }
 
@@ -250,6 +264,8 @@ impl VisionDll {
                 )?,
                 match_next: load_fn(&lib, "Vision.dll", "matchTemplateNext")?,
                 match_end: load_fn(&lib, "Vision.dll", "matchTemplateEnd")?,
+                get_most_color: load_fn(&lib, "Vision.dll", "getMostColor")?,
+                inverted: load_fn(&lib, "Vision.dll", "inverted")?,
                 _lib: lib,
             })
         }
@@ -337,6 +353,26 @@ impl VisionDll {
     pub fn match_end(&self) {
         // SAFETY: 释放 DLL 内部匹配上下文，与 Begin 成对调用。
         unsafe { (self.match_end)() }
+    }
+
+    /// 对应 `NativeMethods.getMostColor(path, resize)`：整张图里出现次数最多的颜色。
+    ///
+    /// `resize` 是采样比例（0~1），图片加载失败时 DLL 返回全 0。
+    pub fn get_most_color(&self, image_path: &str, resize: f32) -> Color {
+        let Ok(path) = std::ffi::CString::new(image_path) else {
+            return Color::default();
+        };
+        // SAFETY: path 以 NUL 结尾，生命周期覆盖本次调用。
+        unsafe { (self.get_most_color)(path.as_ptr(), resize) }
+    }
+
+    /// 对应 `NativeMethods.inverted(path)`：把图片反色（RGB）后原地写回。
+    pub fn invert_image(&self, image_path: &str) -> bool {
+        let Ok(path) = std::ffi::CString::new(image_path) else {
+            return false;
+        };
+        // SAFETY: 同上。
+        unsafe { (self.inverted)(path.as_ptr()) }
     }
 }
 
