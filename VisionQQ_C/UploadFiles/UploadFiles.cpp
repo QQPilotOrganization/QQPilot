@@ -71,14 +71,18 @@ struct VisionApi
 	PFN_matchTemplatesSelectedScaleBegin matchTemplatesSelectedScaleBegin = nullptr;
 	PFN_matchTemplateNext                matchTemplateNext = nullptr;
 	PFN_matchTemplateEnd                 matchTemplateEnd = nullptr;
+	PFN_getMostColor					 getMostColor = nullptr;
+	PFN_inverted						 inverted = nullptr;
 
 	bool Load(const wchar_t* dll = L"Vision.dll")
 	{
 		h = LoadLibraryW(dll);
 		if (!h) return false;
 		return Bind(h, "matchTemplatesSelectedScaleBegin", matchTemplatesSelectedScaleBegin)
-			&& Bind(h, "matchTemplateNext", matchTemplateNext)
-			&& Bind(h, "matchTemplateEnd", matchTemplateEnd);
+			and Bind(h, "matchTemplateNext", matchTemplateNext)
+			and Bind(h, "matchTemplateEnd", matchTemplateEnd)
+			and Bind(h, "inverted", inverted)
+			and Bind(h, "getMostColor", getMostColor);
 	}
 	VisionApi() = default;
 	VisionApi(const
@@ -379,6 +383,12 @@ static bool find_file_icon(
 			continue;
 		}
 		tried.push_back(scale);
+
+		Color c = vision.getMostColor(SCREENSHOT_FILE, 0.1f);
+		if(c.r==DARK_MODE_MOST_COLOR.r and c.g == DARK_MODE_MOST_COLOR.g and c.b == DARK_MODE_MOST_COLOR.b)
+		{
+			vision.inverted(SCREENSHOT_FILE);
+		}
 
 		const int count =
 			vision.matchTemplatesSelectedScaleBegin(image.c_str(), templ.c_str(), tolerance, 1, scale);

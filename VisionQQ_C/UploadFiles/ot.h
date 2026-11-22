@@ -12,7 +12,11 @@ struct Point
     unsigned x;
     unsigned y;
 };
-
+struct Color
+{
+    unsigned char r, g, b, a;
+};
+ Color DARK_MODE_MOST_COLOR = { 34, 34, 34, 255 };
 // ------------------------------------------------------------------
 // 函数指针类型（调用约定必须和原 DLL 一致：这里是默认 __cdecl）
 // ------------------------------------------------------------------
@@ -36,3 +40,10 @@ typedef bool(__cdecl* PFN_Lclick)(unsigned x, unsigned y);
 
 typedef int(__cdecl* PFN_uploadSelectedFiles)(const wchar_t** filenames, size_t count);
 typedef void(__cdecl* PFN_escape)();
+
+
+typedef Color(__cdecl* PFN_getMostColor)(const char* imagePath, float resize);
+typedef bool(__cdecl* PFN_inverted)(const char* imagePath);
+
+//Color getMostColor(const char* imagePath, float resize);
+//bool inverted(const char* imagePath)
