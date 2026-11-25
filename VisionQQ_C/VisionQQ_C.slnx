@@ -9,7 +9,8 @@
   </Configurations>
   <Project Path="audio/audio.vcxproj" Id="23b8678f-9e40-4bde-9b5f-4d8b1fb2f954">
     <BuildType Solution="release2|*" Project="Release" />
-    <Platform Solution="*|ARM64" Project="x64" />
+    <Platform Solution="Debug|ARM64" Project="x64" />
+    <Platform Solution="release2|ARM64" Project="x64" />
   </Project>
   <Project Path="Clocalization/Clocalization.vcxproj" Id="57802c13-8e83-4e2a-ac57-12e06b62343e">
     <BuildType Solution="release2|*" Project="Release" />

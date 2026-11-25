@@ -153,7 +153,7 @@
     "option.remote.images": "下载远程图片",
     "option.remote.audios": "下载远程音频",
     "option.remote.files": "下载远程文件",
-    "option.hint.remote": "模型把图片/音频/文件以链接给出时，是否下载到本地再上传",
+    "option.hint.remote": "模型把图片/音频/文件以链接给出时，是否上传",
     "option.testconnect.builtin": "内置模型不联网，不需要测试连接。",
     "option.group.basic": "基本",
     "option.group.model": "模型与接口",
