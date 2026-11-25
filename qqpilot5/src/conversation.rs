@@ -145,7 +145,6 @@ pub fn parse_chat_log(chat: &str, character_name: &str) -> Vec<ChatContent> {
             time,
             own_by_myself,
         ));
-
     }
 
     messages

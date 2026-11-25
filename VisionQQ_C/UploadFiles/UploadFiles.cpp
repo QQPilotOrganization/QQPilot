@@ -107,7 +107,7 @@ struct InputEventApi
 		h = LoadLibraryW(dll);
 		if (!h) return false;
 		return Bind(h, "DPIAwarenessPrologue", DPIAwarenessPrologue)
-			and Bind(h, "Lclick", Lclick) and Bind(h,"press", press) and Bind(h,"getVkKey", getVkKey);
+			and Bind(h, "Lclick", Lclick) and Bind(h, "press", press) and Bind(h, "getVkKey", getVkKey);
 	}
 	InputEventApi() = default;
 	InputEventApi(const
@@ -170,7 +170,7 @@ static constexpr Pointf toRelativePoint(int x, int y, int width, int height)
 
 static std::array<int, 4> toActualSize(const Rectf& relative, const std::pair<int, int>& size)
 {
-	
+
 	return {
 			static_cast<int>(std::roundf(relative.at(0) * size.first)),
 			static_cast<int>(std::roundf(relative.at(1) * size.second)),
@@ -193,7 +193,7 @@ constexpr int DefaultSizeH = 720;
 constexpr int BasicWidth = 2248;
 constexpr int BasicHeight = 1260;
 
-constexpr RECT UPLOAD_FILE_POSSIBLE_BBOX_ABSOLUTE_SIZE = { 350,920,350+859,920+99 };
+constexpr RECT UPLOAD_FILE_POSSIBLE_BBOX_ABSOLUTE_SIZE = { 350,920,350 + 859,920 + 99 };
 constexpr Rectf UPLOAD_FILE_POSSIBLE_BBOX_RELATIVE_SIZE = toRelativRect(UPLOAD_FILE_POSSIBLE_BBOX_ABSOLUTE_SIZE, BasicWidth, BasicHeight);
 
 // 截图/模板的固定文件名：DLL 内部写死，改不了。
@@ -385,7 +385,7 @@ static bool find_file_icon(
 		tried.push_back(scale);
 
 		Color c = vision.getMostColor(SCREENSHOT_FILE, 0.1f);
-		if(c.r==DARK_MODE_MOST_COLOR.r and c.g == DARK_MODE_MOST_COLOR.g and c.b == DARK_MODE_MOST_COLOR.b)
+		if (c.r == DARK_MODE_MOST_COLOR.r and c.g == DARK_MODE_MOST_COLOR.g and c.b == DARK_MODE_MOST_COLOR.b)
 		{
 			vision.inverted(SCREENSHOT_FILE);
 		}
@@ -514,7 +514,7 @@ static bool parse_args(int argc, wchar_t** argv, Options& options, bool& show_he
 			options.screenshotOnly = true;
 			continue;
 		}
-	
+
 		if (arg == L"--tolerance")
 		{
 			const wchar_t* value = value_after("--tolerance");
@@ -525,7 +525,7 @@ static bool parse_args(int argc, wchar_t** argv, Options& options, bool& show_he
 			options.tolerance = std::stoi(value);
 			continue;
 		}
-		if (arg == L"--scale")											   
+		if (arg == L"--scale")
 		{
 			const wchar_t* value = value_after("--scale");
 			if (value == nullptr)
@@ -607,7 +607,7 @@ int wmain(int argc, wchar_t** argv)
 
 	bool fullyLoaded = true;
 
-	if (not screenCapture.Load() )	 
+	if (not screenCapture.Load())
 	{
 		std::cout << "未找到ScreenCapture.dll\n";
 		fullyLoaded = false;
@@ -652,8 +652,10 @@ int wmain(int argc, wchar_t** argv)
 		return 1;
 	}
 
-
-	bin2cpp::getUploadFileTemplatePngFile().save("file.png");
+	if (not std::filesystem::exists(std::filesystem::path("file.png")))
+	{
+		bin2cpp::getUploadFileTemplatePngFile().save("file.png");
+	}
 
 	Settings settings = read_settings();
 
@@ -668,7 +670,7 @@ int wmain(int argc, wchar_t** argv)
 
 	if (options.screenshotOnly)
 	{
-		doScreenshot(screenCapture,uploadFilePossibleBBoxActualSize);
+		doScreenshot(screenCapture, uploadFilePossibleBBoxActualSize);
 		log_line("截图成功。");
 		return 0;
 	}
@@ -783,7 +785,7 @@ int wmain(int argc, wchar_t** argv)
 	return 0;
 }
 
-static int doScreenshot(const ScreenCaptureApi& screenCapture,const std::array<int, 4>& bbox)
+static int doScreenshot(const ScreenCaptureApi& screenCapture, const std::array<int, 4>& bbox)
 {
 	return screenCapture.screenshot(
 		static_cast<int>(bbox.at(0)),

@@ -6,7 +6,7 @@
 //!   * 其它 —— OpenAI 兼容的 `{base}/chat/completions`
 
 use std::fs;
-use std::path::{Path};
+use std::path::Path;
 use std::time::{Duration, Instant};
 
 use base64::Engine;
@@ -192,18 +192,35 @@ impl Answer {
                 .pointer("/choices/0/message/content")
                 .and_then(Value::as_str)
         };
+
+        let settings = config::get();
+
+        // 有没有正文都先把三类附件收下来：图片 / 音频 / 文件。
+        // `remote_*` 控制是否允许远程数据，无论是不是远程url或base64都一样。
+        let (images, audios, files) = if self.use_ollama {
+            // Ollama 的响应结构里没有 images/audios/files 这些字段
+            (Vec::new(), Vec::new(), Vec::new())
+        } else {
+            (
+                collect_response(&document, "image", settings.remote_images, &self.client),
+                collect_response(&document, "audio", settings.remote_audios, &self.client),
+                collect_response(&document, "file", settings.remote_files, &self.client),
+            )
+        };
+
         let Some(answer) = answer else {
             log::error(localization::get(
                 &localization::load(),
                 "error.answer.missing",
             ));
-            return None;
-        };
 
-        let outgoing_images = if self.use_ollama {
-            Vec::new()
-        } else {
-            collect_response_images(&document)
+            // 没有正文也照样把附件带回去，主流程可以只发附件
+            return Some(UploadContent::new(
+                Some(String::from("")),
+                images,
+                audios,
+                files,
+            ));
         };
 
         let elapsed = start_time.elapsed().as_secs_f64();
@@ -216,7 +233,9 @@ impl Answer {
 
         Some(UploadContent::new(
             Some(answer.trim().to_string()),
-            outgoing_images,
+            images,
+            audios,
+            files,
         ))
     }
 
@@ -245,7 +264,7 @@ impl Answer {
                     log::error(e);
                     std::process::exit(1);
                 });
-            return Some(UploadContent::new(Some(answer), Vec::new()));
+            return Some(UploadContent::text_only(answer));
         }
         Some(UploadContent::text_only(""))
     }
@@ -457,10 +476,29 @@ fn mime_of(path: &str) -> &'static str {
     }
 }
 
-/// 对应 `GetAnswerAsync` 里遍历 `choices[0].message.images` 的那段。
-fn collect_response_images(document: &Value) -> Vec<String> {
-    let Some(images) = document
-        .pointer("/choices/0/message/images")
+/// 从 `choices[0].message.<kind>s` 里取出附件，统一落盘成本地文件。
+///
+/// * `kind`：`"image"` / `"audio"` / `"file"`（数组字段名是它的复数形式）
+/// * `allow_remote`：是否允许下载 `http(s)` 链接，对应 config 里的 `remote_*`
+/// * `client`：下载用的 HTTP 客户端（复用 `Answer` 的那一个，超时/代理设置一致）
+///
+/// 每条附件支持两种写法：
+///   * `{"image_url": {"url": "..."}}`（音频/文件是 `audio_url` / `file_url`，
+///     另外也兼容直接给 `{"url": "..."}`）—— url 可以是 `http(s)` 链接，也可以是
+///     `data:<mime>;base64,...`
+///   * `{"b64_json": "..."}` —— 裸 base64
+fn collect_response(
+    document: &Value,
+    kind: &str,
+    allow_remote: bool,
+    client: &Client,
+) -> Vec<String> {
+    if !allow_remote
+    {
+        return  vec![];
+    }
+    let Some(items) = document
+        .pointer(&format!("/choices/0/message/{kind}s"))
         .and_then(Value::as_array)
     else {
         return Vec::new();
@@ -471,23 +509,36 @@ fn collect_response_images(document: &Value) -> Vec<String> {
 
     println!(
         "{} {} {}",
-        t("info.image.found"),
-        images.len(),
-        t("info.image.unit")
+        t(&format!("info.{kind}.found")),
+        items.len(),
+        t(&format!("info.{kind}.unit"))
     );
 
     let mut paths = Vec::new();
-    for image in images {
-        if let Some(url) = image.pointer("/image_url/url").and_then(Value::as_str) {
+    for item in items {
+        let url = item
+            .pointer(&format!("/{kind}_url/url"))
+            .and_then(Value::as_str)
+            .or_else(|| item.get("url").and_then(Value::as_str));
+
+        if let Some(url) = url {
             let preview: String = url.chars().take(50).collect();
-            println!("{}: {preview}...", t("info.image.dataurl"));
-            if let Some(path) = save_to_temp(url) {
+            println!("{}: {preview}...", t(&format!("info.{kind}.dataurl")));
+
+            if is_remote(url) && !allow_remote {
+                log::warn(format!("{}: {preview}...", t("warning.remote.disabled")));
+            } else if let Some(path) = save_to_temp(url, kind, client) {
                 paths.push(path);
             }
         }
-        if let Some(encoded) = image.get("b64_json").and_then(Value::as_str) {
-            println!("{}: {}", t("info.image.baselength"), encoded.len());
-            if let Some(path) = save_to_temp(encoded) {
+
+        if let Some(encoded) = item.get("b64_json").and_then(Value::as_str) {
+            println!(
+                "{}: {}",
+                t(&format!("info.{kind}.baselength")),
+                encoded.len()
+            );
+            if let Some(path) = save_to_temp(encoded, kind, client) {
                 paths.push(path);
             }
         }
@@ -495,20 +546,99 @@ fn collect_response_images(document: &Value) -> Vec<String> {
     paths
 }
 
-/// 对应 `Answer.SaveToTemp`：把 data URL / base64 存成 `./temp/<md5>.<ext>`。
-fn save_to_temp(base64_string: &str) -> Option<String> {
+/// 是不是一个远程链接（`http://` / `https://`）。
+fn is_remote(source: &str) -> bool {
+    source.starts_with("http://") || source.starts_with("https://")
+}
+
+/// 对应 `Answer.SaveToTemp`：把远程链接 / data URL / base64 存成
+/// `./temp/<md5>.<ext>`。
+///
+/// 远程链接会真的下载一次（超时沿用 `Answer` 的客户端），
+/// 文件名取内容的 MD5，扩展名优先看 Content-Type，其次看 URL 路径。
+fn save_to_temp(source: &str, kind: &str, client: &Client) -> Option<String> {
+    // 测试里可能没走过 `Answer::new`，这里补一次确保目录存在
+    let _ = fs::create_dir_all(TEMP_PATH);
+
     let translate = localization::load();
     let t = |key: &str| localization::get(&translate, key);
 
-    let meta = base64_string.split(';').next().unwrap_or_default();
-    let Some((_, payload)) = base64_string.split_once(',') else {
-        let preview: String = base64_string.chars().take(60).collect();
+    // 1. http(s) 链接：下载
+    if is_remote(source) {
+        let response = match client.get(source).send() {
+            Ok(response) => response,
+            Err(e) => {
+                log::error(format!("{} {source}: {e}", t("error.download.failed")));
+                return None;
+            }
+        };
+        if !response.status().is_success() {
+            log::error(format!(
+                "{} {source}: HTTP {}",
+                t("error.download.failed"),
+                response.status()
+            ));
+            return None;
+        }
+        let content_type = response
+            .headers()
+            .get(reqwest::header::CONTENT_TYPE)
+            .and_then(|value| value.to_str().ok())
+            .map(|value| {
+                value
+                    .split(';')
+                    .next()
+                    .unwrap_or_default()
+                    .trim()
+                    .to_string()
+            });
+        let bytes = match response.bytes() {
+            Ok(bytes) => bytes,
+            Err(e) => {
+                log::error(format!("{} {source}: {e}", t("error.download.failed")));
+                return None;
+            }
+        };
+
+        let extension = content_type
+            .as_deref()
+            .and_then(extension_of_mime)
+            .map(str::to_string)
+            .or_else(|| extension_of_url(source))
+            .unwrap_or_else(|| default_extension(kind).to_string());
+
+        let file_name = format!("{}.{}", md5_hex(source), extension);
+        let file_path = Path::new(TEMP_PATH).join(file_name);
+        let file_path = file_path.to_string_lossy().into_owned();
+        return save_bytes(&bytes, &file_path).map(|()| file_path);
+    }
+
+    // 2. data URL：`data:<mime>;base64,<payload>`
+    let (meta, payload) = match source.split_once(',') {
+        Some((meta, payload)) => (meta, payload),
+        None => ("", source),
+    };
+    let extension = if meta.starts_with("data:") {
+        let mime = meta
+            .trim_start_matches("data:")
+            .split(';')
+            .next()
+            .unwrap_or_default();
+        match extension_of_mime(mime) {
+            Some(extension) => extension.to_string(),
+            None => {
+                log::error(format!("{}: {meta}", t("error.image.unknownmime")));
+                return None;
+            }
+        }
+    } else if !meta.is_empty() {
+        // 形状不对（既不是链接也不是 data URL，逗号前还有别的内容）
+        let preview: String = source.chars().take(60).collect();
         log::error(format!("{}: {preview}", t("error.image.badformat")));
         return None;
-    };
-    let Some(extension) = meta.split("data:image/").nth(1) else {
-        log::error(format!("{}: {meta}", t("error.image.unknownmime")));
-        return None;
+    } else {
+        // 3. 裸 base64：没有 MIME 信息，按类型给个默认扩展名
+        default_extension(kind).to_string()
     };
 
     let file_name = format!("{}.{}", md5_hex(payload), extension);
@@ -517,6 +647,94 @@ fn save_to_temp(base64_string: &str) -> Option<String> {
 
     save_base64_image(payload, &file_path)?;
     Some(file_path)
+}
+
+/// `Content-Type` / data URL 里的 MIME 对应的文件扩展名。
+fn extension_of_mime(mime: &str) -> Option<&'static str> {
+    let mime = mime.trim().to_ascii_lowercase();
+    let mime = mime.split(';').next().unwrap_or_default().trim();
+    Some(match mime {
+        "image/png" => "png",
+        "image/jpeg" | "image/jpg" => "jpg",
+        "image/gif" => "gif",
+        "image/webp" => "webp",
+        "image/bmp" => "bmp",
+        "image/avif" => "avif",
+        "image/svg+xml" => "svg",
+        "audio/mpeg" | "audio/mp3" => "mp3",
+        "audio/wav" | "audio/x-wav" | "audio/wave" => "wav",
+        "audio/ogg" | "audio/opus" => "ogg",
+        "audio/mp4" | "audio/aac" | "audio/x-m4a" => "m4a",
+        "audio/flac" | "audio/x-flac" => "flac",
+        "audio/webm" => "webm",
+        "video/mp4" => "mp4",
+        "application/pdf" => "pdf",
+        "application/zip" => "zip",
+        "application/json" => "json",
+        "text/plain" => "txt",
+        "application/octet-stream" => "bin",
+        _ => return None,
+    })
+}
+
+/// 从 URL 路径里猜扩展名（`.../a/b.mp3?x=1` -> `mp3`）。
+fn extension_of_url(url: &str) -> Option<String> {
+    let path = url.split(['?', '#']).next().unwrap_or_default();
+    let file = path.rsplit('/').next().unwrap_or_default();
+    let (_, extension) = file.rsplit_once('.')?;
+    if extension.is_empty() || extension.len() > 8 {
+        return None;
+    }
+    if !extension.chars().all(|c| c.is_ascii_alphanumeric()) {
+        return None;
+    }
+    Some(extension.to_ascii_lowercase())
+}
+
+/// 拿不到 MIME 时按类型给的默认扩展名。
+fn default_extension(kind: &str) -> &'static str {
+    match kind {
+        "image" => "png",
+        "audio" => "mp3",
+        "file" => "bin",
+        _ => "bin",
+    }
+}
+
+/// 把字节写进文件；失败只记日志。
+fn save_bytes(bytes: &[u8], file_path: &str) -> Option<()> {
+    let translate = localization::load();
+    match write_file(file_path, bytes) {
+        Ok(()) => {
+            println!(
+                "{}: {file_path}",
+                localization::get(&translate, "info.saved")
+            );
+            Some(())
+        }
+        Err(e) => {
+            log::error(format!(
+                "{} {file_path}: {e}",
+                localization::get(&translate, "error.file.writefailed")
+            ));
+            None
+        }
+    }
+}
+/// 写文件；`./temp` 可能在写入的瞬间被 `Answer` 的析构删掉，所以最多重试 3 次。
+fn write_file(file_path: &str, bytes: &[u8]) -> std::io::Result<()> {
+    let mut last = Ok(());
+    for _ in 0..3 {
+        if let Some(parent) = Path::new(file_path).parent() {
+            let _ = fs::create_dir_all(parent);
+        }
+        match fs::write(file_path, bytes) {
+            Ok(()) => return Ok(()),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => last = Err(e),
+            Err(e) => return Err(e),
+        }
+    }
+    last
 }
 
 /// 对应 `Answer.SaveBase64Image`。
@@ -531,7 +749,7 @@ fn save_base64_image(base64_string: &str, file_path: &str) -> Option<()> {
     };
 
     match base64::engine::general_purpose::STANDARD.decode(payload) {
-        Ok(bytes) => match fs::write(file_path, bytes) {
+        Ok(bytes) => match write_file(file_path, &bytes) {
             Ok(()) => {
                 println!("{}: {file_path}", t("info.image.saved"));
                 Some(())
@@ -558,11 +776,16 @@ fn md5_hex(input: &str) -> String {
 mod tests {
     use std::env;
 
-use super::*;
+    use super::*;
+
+    /// `./temp` 是进程级共享目录，而 `Answer` 析构会把它整个删掉；
+    /// 会写/删它的测试必须串起来，否则偶尔会撞上"目录刚被删"。
+    static TEMP_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
     /// `Display` 要能安全地打出后端/参数摘要（这里只是别 panic）。
     #[test]
     fn display_summarizes_the_backend() {
+        let _guard = TEMP_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         let settings = Answer::new();
         let text = settings.to_string();
         assert!(text.starts_with("Answer(backend="), "{text}");
@@ -618,6 +841,90 @@ use super::*;
         let body: Value = serde_json::from_str(&dest).expect("dest.json 不是合法 JSON");
         assert_eq!(body.get("model"), Some(&json!("Qwen/Qwen3-8B")));
     }
+    /// 远程链接要真的下载下来并落到 `./temp`。
+    #[test]
+    fn downloads_remote_attachment() {
+        let _guard = TEMP_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        use std::io::{Read, Write};
+        use std::net::TcpListener;
+
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let server = std::thread::spawn(move || {
+            if let Ok((mut stream, _)) = listener.accept() {
+                let mut buffer = [0u8; 1024];
+                let _ = stream.read(&mut buffer);
+                let body = b"hello-audio";
+                let head = format!(
+                    "HTTP/1.1 200 OK\r\nContent-Type: audio/mpeg\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                    body.len()
+                );
+                let _ = stream.write_all(head.as_bytes());
+                let _ = stream.write_all(body);
+            }
+        });
+
+        let client = Client::builder()
+            .timeout(Duration::from_secs(5))
+            .build()
+            .unwrap();
+        let url = format!("http://127.0.0.1:{port}/whatever");
+        let path = save_to_temp(&url, "audio", &client).expect("远程下载失败");
+        server.join().unwrap();
+
+        // 扩展名来自 Content-Type，内容原样落盘
+        assert!(path.ends_with(".mp3"), "{path}");
+        assert_eq!(fs::read(&path).unwrap(), b"hello-audio");
+        let _ = fs::remove_file(path);
+    }
+
+    /// data URL 现在要能识别任意 MIME（以前只认 image/）。
+    #[test]
+    fn saves_data_url_with_any_mime() {
+        let _guard = TEMP_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let client = Client::builder()
+            .timeout(Duration::from_secs(5))
+            .build()
+            .unwrap();
+        let payload = base64::engine::general_purpose::STANDARD.encode(b"abc");
+        let source = format!("data:audio/mpeg;base64,{payload}");
+        let path = save_to_temp(&source, "audio", &client).expect("data URL 保存失败");
+        assert!(path.ends_with(".mp3"), "{path}");
+        assert_eq!(fs::read(&path).unwrap(), b"abc");
+        let _ = fs::remove_file(path);
+
+        // 裸 base64：没有 MIME，按类型给默认扩展名
+        let path = save_to_temp(&payload, "file", &client).expect("裸 base64 保存失败");
+        assert!(path.ends_with(".bin"), "{path}");
+        let _ = fs::remove_file(path);
+    }
+    /// 扩展名猜测：Content-Type 优先，其次 URL 路径，最后按类型兜底。
+    #[test]
+    fn guesses_extensions() {
+        assert_eq!(extension_of_mime("image/png"), Some("png"));
+        assert_eq!(extension_of_mime("audio/mpeg"), Some("mp3"));
+        assert_eq!(extension_of_mime("application/pdf"), Some("pdf"));
+        assert_eq!(extension_of_mime("audio/x-unknown"), None);
+
+        assert_eq!(
+            extension_of_url("https://a/b/c.mp3?x=1"),
+            Some("mp3".to_string())
+        );
+        assert_eq!(extension_of_url("https://a/b/c"), None);
+        assert_eq!(
+            extension_of_url("https://a/b/c.WAV"),
+            Some("wav".to_string())
+        );
+
+        assert_eq!(default_extension("image"), "png");
+        assert_eq!(default_extension("audio"), "mp3");
+        assert_eq!(default_extension("file"), "bin");
+
+        assert!(is_remote("https://example.com/a.mp3"));
+        assert!(is_remote("http://example.com/a.mp3"));
+        assert!(!is_remote("data:image/png;base64,AA"));
+        assert!(!is_remote("temp/a.png"));
+    }
     #[test]
     fn darken_text() {
         println!("\033[2m<think>\n123123124214\n</think>");
@@ -629,6 +936,6 @@ use super::*;
         while url2.ends_with('/') {
             url2.pop();
         }
-        assert_eq!(url2,String::from("1"),"?")
+        assert_eq!(url2, String::from("1"), "?")
     }
 }

@@ -53,7 +53,12 @@ pub struct Settings {
     pub simulate_output_speed: bool,
     pub rest_schedule: String,
     pub tab_after_match_template_failed:bool,
-    pub api_key_in_env:bool
+    pub api_key_in_env:bool,
+
+    /// 模型把图片/音频/文件以 http(s) 链接给出时，是否下载到本地再上传。
+    pub remote_images: bool,
+    pub remote_audios: bool,
+    pub remote_files: bool,
 }
 
 impl Default for Settings {
@@ -85,6 +90,10 @@ impl Default for Settings {
             rest_schedule: String::from("0,1,2,3,4,5,6,7,8"),
             tab_after_match_template_failed:false,
             api_key_in_env:false,
+
+            remote_images: true,
+            remote_audios: false,
+            remote_files: false,
         }
     }
 }
@@ -150,6 +159,10 @@ impl Settings {
             rest_schedule: get_str("rest_schedule", &d.rest_schedule),
             tab_after_match_template_failed:get_bool("tab_after_match_template_failed",d.tab_after_match_template_failed),
             api_key_in_env:get_bool("api_key_in_env",d.api_key_in_env),
+
+            remote_images: get_bool("remote_images", d.remote_images),
+            remote_audios: get_bool("remote_audios", d.remote_audios),
+            remote_files: get_bool("remote_files", d.remote_files),
         }
     }
 
@@ -178,7 +191,7 @@ impl Settings {
             ));
         }
 
-        let values: [(&str, String); 25] = [
+        let values: [(&str, String); 28] = [
             ("version", self.version.clone()),
             ("name", self.name.clone()),
             ("width", self.width.to_string()),
@@ -209,7 +222,10 @@ impl Settings {
             ("simulate_output_speed",bool_text(self.simulate_output_speed)),
             ("rest_schedule",self.rest_schedule.to_string()),
             ("tab_after_match_template_failed",bool_text(self.tab_after_match_template_failed)),
-            ("api_key_in_env",bool_text(self.api_key_in_env))
+            ("api_key_in_env",bool_text(self.api_key_in_env)),
+            ("remote_images", bool_text(self.remote_images)),
+            ("remote_audios", bool_text(self.remote_audios)),
+            ("remote_files", bool_text(self.remote_files))
 
         ];
         for (key, value) in values {
@@ -300,6 +316,9 @@ mod tests {
         settings.width = 1600;
         settings.model_name = "gpt-x".to_string();
         settings.with_image = true;
+        // 远程附件开关：三个都是新加的，顺带验证读-写-再读
+        settings.remote_audios = true;
+        settings.remote_files = true;
         settings.save_to(&config, "系统提示", &system).unwrap();
 
         let written = fs::read_to_string(&config).unwrap();
@@ -316,6 +335,9 @@ mod tests {
         assert!(written.contains("width = 1600"));
         assert!(written.contains("withimage = true"));
         assert!(written.contains("modelname = gpt-x"));
+        assert!(written.contains("remote_images = true"), "remote_images 没写进去:\n{written}");
+        assert!(written.contains("remote_audios = true"), "remote_audios 没写进去:\n{written}");
+        assert!(written.contains("remote_files = true"), "remote_files 没写进去:\n{written}");
         assert_eq!(fs::read_to_string(&system).unwrap(), "系统提示");
 
         let reloaded = Settings::load_from(&config);
@@ -325,6 +347,10 @@ mod tests {
         // 没动过的字段也要保持一致
         assert_eq!(reloaded.scroll, settings.scroll);
         assert_eq!(reloaded.version, settings.version);
+        // 远程附件开关原样读回来
+        assert!(reloaded.remote_images);
+        assert!(reloaded.remote_audios);
+        assert!(reloaded.remote_files);
     }
 
     #[test]

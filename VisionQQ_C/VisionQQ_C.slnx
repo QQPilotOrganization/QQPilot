@@ -16,15 +16,6 @@
     <Platform Solution="Debug|ARM64" Project="x64" />
     <Platform Solution="release2|ARM64" Project="x64" />
   </Project>
-  <Project Path="ClocalizationTest/clocalc.vcxproj" Id="0c5981ea-17e7-4a3e-ab05-8745fc3d696f">
-    <BuildType Solution="release2|*" Project="Release" />
-    <BuildType Solution="Release|ARM64" Project="Debug" />
-    <Platform Solution="*|ARM64" Project="x64" />
-    <Build Solution="*|x86" Project="false" />
-    <Build Solution="release2|ARM64" Project="false" />
-    <Build Solution="release2|x64" Project="false" />
-    <Build Solution="Release|x64" Project="false" />
-  </Project>
   <Project Path="FocusQQWindow2/FocusQQWindow2.vcxproj" Id="92a5f2dc-82d6-4511-995d-853d782b1c7a">
     <BuildType Solution="release2|*" Project="Release" />
   </Project>

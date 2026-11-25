@@ -20,20 +20,20 @@
 #ifdef _DEBUG
 #include<iostream>
 #endif
-BOOL APIENTRY DllMain( HMODULE hModule,
-                       DWORD  ul_reason_for_call,
-                       LPVOID lpReserved
-                     )
+BOOL APIENTRY DllMain(HMODULE hModule,
+	DWORD  ul_reason_for_call,
+	LPVOID lpReserved
+)
 {
-    switch (ul_reason_for_call)
-    {
-    case DLL_PROCESS_ATTACH:
-    case DLL_THREAD_ATTACH:
-    case DLL_THREAD_DETACH:
-    case DLL_PROCESS_DETACH:
-        break;
-    }
-    return TRUE;
+	switch (ul_reason_for_call)
+	{
+	case DLL_PROCESS_ATTACH:
+	case DLL_THREAD_ATTACH:
+	case DLL_THREAD_DETACH:
+	case DLL_PROCESS_DETACH:
+		break;
+	}
+	return TRUE;
 }
 
 
@@ -70,8 +70,8 @@ static std::wstring wjoin(const std::wstring& delimiter, const std::vector<std::
 }
 
 
-extern "C" int __declspec(dllexport) uploadSelectedFiles(const wchar_t** filenames,size_t count)
-{	
+extern "C" int __declspec(dllexport) uploadSelectedFiles(const wchar_t** filenames, size_t count)
+{
 	std::vector<std::wstring> existFiles;
 	existFiles.reserve(count);
 	for (size_t i = 0; i < count; i++)
@@ -102,7 +102,7 @@ extern "C" int __declspec(dllexport) uploadSelectedFiles(const wchar_t** filenam
 
 	anypath = wjoin(L" ", existFiles);
 #ifdef  _DEBUG
-	std::wcout<<L"Anypath:" << anypath << std::endl;
+	std::wcout << L"Anypath:" << anypath << std::endl;
 #endif //  _DEBUG
 	EnumWindows(uploadFile, NULL);
 	return 0;
@@ -115,7 +115,7 @@ bool fileExists(const wchar_t* fileName)
 	{
 		return false;
 	}
-	wchar_t combined[MAX_PATH * 2] = {0};
+	wchar_t combined[MAX_PATH * 2] = { 0 };
 	PathCchCombineEx(combined, MAX_PATH * 2, workingDirectory, fileName, PATHCCH_NONE);
 
 	DWORD attributes = GetFileAttributes(combined);
@@ -133,7 +133,7 @@ extern "C" int __declspec(dllexport) upload()
 	const wchar_t* imageExts[] = { L".gif",L".png",L".jpg",L".jpeg",L".webp",L".avif",L".bmp" };
 	//列出所有文件
 	WIN32_FIND_DATA findFileData;
-	
+
 	HANDLE hFind = INVALID_HANDLE_VALUE;
 	WCHAR pathwithastar[MAX_PATH];
 	WCHAR path[MAX_PATH];
@@ -141,7 +141,7 @@ extern "C" int __declspec(dllexport) upload()
 	GetCurrentDirectory(MAX_PATH, pathwithastar);
 	std::wcscat(pathwithastar, L"\\Images\\*");
 	std::wcsncpy(path, pathwithastar, std::wcslen(pathwithastar) - 1);
-	
+
 	;
 	std::vector<std::wstring> images;
 
@@ -190,7 +190,7 @@ extern "C" int __declspec(dllexport) upload()
 		return -1;
 	}
 	anypath = std::wstring(path, std::wcslen(pathwithastar) - 1) + images.at(0);
-	
+
 	std::wprintf(L"->%s", images.at(0).c_str());
 	// 上传文件
 	EnumWindows(uploadFile, NULL);
@@ -235,11 +235,14 @@ static BOOL CALLBACK uploadFile(HWND hwnd, LPARAM lparam)
 	//wchar_t windowName[MAX_PATH]{};
 
 	auto windowName2 = getWindowName(hwnd);
+#ifdef _DEBUG
+	std::wcout << L"Callback: Window:" << hwnd << L"\n" << "name:" << windowName2 << "\n";
+#endif // _DEBUG
 	if (windowName2 == L"") return true;
 	if (stringInString(windowName2, findStr))
 	{
 #ifdef _DEBUG
-		std::wcout << L"Found Window:" << hwnd<<L"\n"<<"name:"<<windowName2<<"\n";
+		std::wcout << L"Found Window:" << hwnd << L"\n" << "name:" << windowName2 << "\n";
 #endif // _DEBUG
 
 		HWND comboboxEx32 = FindWindowEx(hwnd, NULL, L"ComboBoxEx32", NULL);

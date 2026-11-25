@@ -126,6 +126,7 @@ bool hotKey(WORD modifier, WORD vkKey)
     return SendInput(4, inputs, sizeof(INPUT)) == 4;
 }
 
+
 extern "C" __declspec(dllexport)
 bool hold(WORD vkKey, float second)
 {
@@ -143,7 +144,6 @@ bool hold(WORD vkKey, float second)
     return SendInput(1, inputs2, sizeof(INPUT)) == 1;
 }
 
-
 extern "C" __declspec(dllexport)
 bool holdHotKey(WORD modifier, WORD vkKey, float second)
 {
@@ -160,6 +160,7 @@ bool holdHotKey(WORD modifier, WORD vkKey, float second)
     setKeyEvent(inputs[3], modifier, true); // mod up
     return SendInput(2, inputs+2, sizeof(INPUT)) == 2;
 }
+
 
 extern "C" __declspec(dllexport)
 bool keyDown(WORD vkKey)

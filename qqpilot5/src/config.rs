@@ -94,6 +94,10 @@ pub struct Config {
     pub rest_schedule: String,
     pub tab_after_match_template_failed: bool,
     pub api_key_in_env: bool,
+
+    pub remote_images: bool,
+    pub remote_audios: bool,
+    pub remote_files: bool,
 }
 
 impl Default for Config {
@@ -128,6 +132,10 @@ impl Default for Config {
             rest_schedule: String::from("0,1,2,3,4,5,6,7,8"),
             tab_after_match_template_failed: false,
             api_key_in_env: false,
+
+            remote_images: true,
+            remote_audios: false,
+            remote_files: false,
         }
     }
 }
@@ -189,15 +197,21 @@ impl Config {
                 "tab_after_match_template_failed",
                 d.tab_after_match_template_failed,
             ),
-            api_key_in_env: api_key_in_env,
+            api_key_in_env,
             api_key: if !api_key_in_env {
                 get_str(&ini, "api_key", &d.api_key)
             } else {
-                std::env::var("QQPILOT_LLM_API_KEY").expect(&localization::get(
-                    &translate,
-                    "error.env.notfound.QQPILOT_LLM_API_KEY",
-                ))
+                std::env::var("QQPILOT_LLM_API_KEY").unwrap_or_else(|_| {
+                    panic!(
+                        "{}",
+                        localization::get(&translate, "error.env.notfound.QQPILOT_LLM_API_KEY")
+                    )
+                })
             },
+
+            remote_images: get_bool(&ini, "remote_images", d.remote_images),
+            remote_audios: get_bool(&ini, "remote_audios", d.remote_audios),
+            remote_files: get_bool(&ini, "remote_files", d.remote_files),
         }
     }
 }
@@ -459,14 +473,14 @@ mod tests {
 
     #[test]
     fn get_api_key_in_config() {
-
         let path = write_temp("qqpilot5-config-ok.ini", "[general]\napi_key=123456789");
         let config = Config::load(&path);
         assert_eq!(config.api_key, "123456789");
     }
     #[test]
     fn get_api_key_in_env() {
-        let _guard = CHANGING_ENV.lock().unwrap();
+        // 另一个用例是 #[should_panic]，会把锁毒化；这里穿过毒化继续用，否则顺序一变就假失败
+        let _guard = CHANGING_ENV.lock().unwrap_or_else(|e| e.into_inner());
 
         unsafe { std::env::set_var("QQPILOT_LLM_API_KEY", "2358989") };
         let path = write_temp(
@@ -479,15 +493,17 @@ mod tests {
     #[test]
     #[should_panic]
     fn get_api_key_in_env_not_exist() {
-        let _guard = CHANGING_ENV.lock().unwrap();
+        // 另一个用例是 #[should_panic]，会把锁毒化；这里穿过毒化继续用，否则顺序一变就假失败
+        let _guard = CHANGING_ENV.lock().unwrap_or_else(|e| e.into_inner());
 
         unsafe { std::env::set_var("QQPILOT_LLM_API_KEY", "2358989") };
-        unsafe { std::env::remove_var("QQPILOT_LLM_API_KEY"); };
+        unsafe {
+            std::env::remove_var("QQPILOT_LLM_API_KEY");
+        };
         let path = write_temp(
             "qqpilot5-config-env-not-exist.ini",
             "[general]\napi_key=123456789\napi_key_in_env=true",
         );
-         Config::load(&path);
-        
+        Config::load(&path);
     }
 }

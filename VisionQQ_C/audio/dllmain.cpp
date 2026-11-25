@@ -22,6 +22,8 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 }
 
 
+
+constexpr auto maxLength_s = 59;
 //播放wav，结束后返回。
 extern "C" __declspec(dllexport)
 bool playSound2(const char* file)
@@ -38,6 +40,7 @@ bool playSound2(const char* file)
 
     // 用 ma_sound_init_from_file 替代 ma_engine_play_sound
     result = ma_sound_init_from_file(&engine, file, 0, NULL, NULL, &sound);
+    
     if (result != MA_SUCCESS) {
         printf("Failed to load sound file.");
         ma_engine_uninit(&engine);
@@ -46,9 +49,16 @@ bool playSound2(const char* file)
 
     ma_sound_start(&sound);
 
+    unsigned count = 0;
     // 阻塞等待，直到声音播完
     while (ma_sound_at_end(&sound) == 0) {
         Sleep(20);
+        count += 20;
+        if (count >= (maxLength_s * 1000))
+        {
+            break;
+        }
+
     }
 
     // 清理资源

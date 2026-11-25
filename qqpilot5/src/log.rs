@@ -190,10 +190,13 @@ mod tests {
         let mut f = LOG.lock().unwrap();
         std::fs::remove_file("log.txt").unwrap_or(());
         for o in 0..10000 {
-            if let Err(e) = write!(f, "{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}") {
+            if let Err(e) = write!(
+                f,
+                "{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}"
+            ) {
                 eprintln!("Log:{e}");
             }
-        } 
+        }
         //理所应当地存在两个文件
         std::fs::remove_file("log.txt").unwrap();
         std::fs::remove_file("log.txt.1").unwrap();

@@ -308,23 +308,33 @@ pub struct SettingsApp {
     #[nwg_control(text: localization::text("option.mouse.smooth"), size: (170, 24), position: (724, 604), flags: "VISIBLE|TAB_STOP")]
     mouse_smooth_move: nwg::CheckBox,
 
-    #[nwg_control(text: localization::text("option.auto.login"), size: (150, 24), position: (534, 632), flags: "VISIBLE|TAB_STOP")]
-    auto_login: nwg::CheckBox,
+    // 远程附件：模型把图片/音频/文件以链接给出时是否下载到本地
+    #[nwg_control(text: localization::text("option.remote.images"), size: (170, 24), position: (534, 632), flags: "VISIBLE|TAB_STOP")]
+    remote_images: nwg::CheckBox,
+
+    #[nwg_control(text: localization::text("option.remote.audios"), size: (170, 24), position: (712, 632), flags: "VISIBLE|TAB_STOP")]
+    remote_audios: nwg::CheckBox,
+
+    #[nwg_control(text: localization::text("option.remote.files"), size: (170, 24), position: (890, 632), flags: "VISIBLE|TAB_STOP")]
+    remote_files: nwg::CheckBox,
+
+    #[nwg_control(text: localization::text("option.hint.remote"), size: (COL2_W, 12), position: (COL2_X, 656), font: Some(&data.font_hint))]
+    hint_remote: nwg::Label,
 
     // ================= 右列 · 状态 =================
-    #[nwg_control(text: localization::text("option.group.status"), size: (COL2_W, 20), position: (COL2_X, 656), font: Some(&data.font_heading))]
+    #[nwg_control(text: localization::text("option.group.status"), size: (COL2_W, 20), position: (COL2_X, 672), font: Some(&data.font_heading))]
     heading_status: nwg::Label,
 
-    #[nwg_control(text: "", size: (COL2_W, 1), position: (COL2_X, 678), background_color: Some([214, 219, 226]))]
+    #[nwg_control(text: "", size: (COL2_W, 1), position: (COL2_X, 694), background_color: Some([214, 219, 226]))]
     line_status: nwg::Label,
 
-    #[nwg_control(text: localization::text("option.token.count"), size: (90, 22), position: (534, 684))]
+    #[nwg_control(text: localization::text("option.token.count"), size: (90, 22), position: (534, 700))]
     label_token_count: nwg::Label,
 
-    #[nwg_control(text: "0", size: (120, 22), position: (630, 684))]
+    #[nwg_control(text: "0", size: (120, 22), position: (630, 700))]
     token_count: nwg::Label,
 
-    #[nwg_control(text: localization::text("option.reset.token"), size: (140, 26), position: (760, 682))]
+    #[nwg_control(text: localization::text("option.reset.token"), size: (140, 26), position: (760, 698))]
     #[nwg_events(OnButtonClick: [SettingsApp::reset_token_count])]
     button_reset_token: nwg::Button,
 
@@ -415,9 +425,12 @@ impl SettingsApp {
         self.scroll.set_text(&settings.scroll.to_string());
         self.with_image
             .set_check_state(check_state(settings.with_image));
-        self.auto_login
-            .set_check_state(check_state(settings.auto_login));
-        self.auto_login.set_visible(false);
+        self.remote_images
+            .set_check_state(check_state(settings.remote_images));
+        self.remote_audios
+            .set_check_state(check_state(settings.remote_audios));
+        self.remote_files
+            .set_check_state(check_state(settings.remote_files));
         self.auto_focusing
             .set_check_state(check_state(settings.auto_focusing));
         self.at_detect
@@ -489,7 +502,11 @@ impl SettingsApp {
             server_url: self.server_url.text(),
             scroll: read(&self.scroll, Settings::default().scroll).clamp(SCROLL_MIN, SCROLL_MAX),
             with_image: self.with_image.check_state() == nwg::CheckBoxState::Checked,
+            // 自动点击登录没有界面开关，恒为 false
             auto_login: false,
+            remote_images: self.remote_images.check_state() == nwg::CheckBoxState::Checked,
+            remote_audios: self.remote_audios.check_state() == nwg::CheckBoxState::Checked,
+            remote_files: self.remote_files.check_state() == nwg::CheckBoxState::Checked,
             auto_focusing: self.auto_focusing.check_state() == nwg::CheckBoxState::Checked,
             send_image_possibility: self.send_image_possibility.pos() as i32,
             at_detect: self.at_detect.check_state() == nwg::CheckBoxState::Checked,
@@ -622,7 +639,6 @@ impl SettingsApp {
                 self.api_key_in_env
                     .set_check_state(nwg::CheckBoxState::Unchecked);
                 return;
-            } else {
             }
             self.api_key.set_text("ENV");
 

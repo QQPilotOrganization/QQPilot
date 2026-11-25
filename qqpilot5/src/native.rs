@@ -50,7 +50,7 @@ pub struct Color {
 // --- 加载辅助 ---
 
 /// 与 C# 版相同：先在可执行文件目录、再在当前工作目录找 DLL。
-fn find_dll(name: &str) -> Result<PathBuf, String> {
+pub(crate) fn find_dll(name: &str) -> Result<PathBuf, String> {
     let mut candidates: Vec<PathBuf> = Vec::new();
     if let Some(dir) = std::env::current_exe()
         .ok()
@@ -113,6 +113,7 @@ type ScrollFn = unsafe extern "C" fn(i32) -> bool;
 type GetVkKeyFn = unsafe extern "C" fn(*const std::ffi::c_char) -> u16;
 type HotKeyFn = unsafe extern "C" fn(u16, u16) -> bool;
 type PressFn = unsafe extern "C" fn(u16) -> bool;
+type KeyStateFn = unsafe extern "C" fn(u16) -> bool;
 type SimpleActionFn = unsafe extern "C" fn() -> bool;
 type DpiAwarenessFn = unsafe extern "C" fn() -> bool;
 
@@ -124,6 +125,11 @@ pub struct InputEvent {
     get_vk_key: GetVkKeyFn,
     hot_key: HotKeyFn,
     press: PressFn,
+    // 预留给调用方（按住/弹起某个键），暂时还没有地方用
+    #[allow(dead_code)]
+    key_down: KeyStateFn,
+    #[allow(dead_code)]
+    key_up: KeyStateFn,
     mouse_down: SimpleActionFn,
     mouse_up: SimpleActionFn,
     dpi_awareness: DpiAwarenessFn,
@@ -144,6 +150,8 @@ impl InputEvent {
                 get_vk_key: load_fn(&lib, "InputEvent.dll", "getVkKey")?,
                 hot_key: load_fn(&lib, "InputEvent.dll", "hotKey")?,
                 press: load_fn(&lib, "InputEvent.dll", "press")?,
+                key_down: load_fn(&lib, "InputEvent.dll", "keyDown")?,
+                key_up: load_fn(&lib, "InputEvent.dll", "keyUp")?,
                 mouse_down: load_fn(&lib, "InputEvent.dll", "LmouseDown")?,
                 mouse_up: load_fn(&lib, "InputEvent.dll", "LmouseUp")?,
                 dpi_awareness: load_fn(&lib, "InputEvent.dll", "DPIAwarenessPrologue")?,
@@ -196,6 +204,22 @@ impl InputEvent {
         unsafe { (self.hot_key)(modifier, key) }
     }
 
+    /// 对应 `keyDown(WORD vkKey)`：把某个虚拟键**按下并保持**（不弹起）。
+    ///
+    /// 和 [`Self::press`] 的区别：`press` 是"按下 + 弹起"一次；`keyDown` / `keyUp`
+    /// 用来按住不放（例如按住 Shift 再点鼠标），记得成对调用。
+    #[allow(dead_code)]
+    pub fn key_down(&self, vk: u16) -> bool {
+        // SAFETY: 函数指针在构造时已解析，签名与 C 侧 `bool keyDown(WORD)` 一致。
+        unsafe { (self.key_down)(vk) }
+    }
+
+    /// 对应 `keyUp(WORD vkKey)`：弹起某个虚拟键。
+    #[allow(dead_code)]
+    pub fn key_up(&self, vk: u16) -> bool {
+        // SAFETY: 同上。
+        unsafe { (self.key_up)(vk) }
+    }
     /// 对应 `GUIOperation.LmouseDown`。
     pub fn mouse_down(&self) -> bool {
         // SAFETY: 同上。
@@ -465,6 +489,39 @@ impl UploadFile {
     }
 }
 
+// --- audio.dll ---
+
+/// C 侧：`bool playSound2(const char* file)`。
+type PlaySoundFn = unsafe extern "C" fn(*const std::ffi::c_char) -> bool;
+
+/// `audio.dll`：阻塞式播放一个音频文件（底层 miniaudio，wav/mp3/flac 都认）。
+pub struct AudioDll {
+    play_sound: PlaySoundFn,
+    _lib: Library,
+}
+
+impl AudioDll {
+    fn load() -> Result<Self, String> {
+        let lib = open_library("audio.dll")?;
+        // SAFETY: 签名与 `audio/dllmain.cpp` 的 `bool playSound2(const char*)` 一致。
+        unsafe {
+            Ok(Self {
+                play_sound: load_fn(&lib, "audio.dll", "playSound2")?,
+                _lib: lib,
+            })
+        }
+    }
+
+    /// 对应 `playSound2`：**阻塞**播放，声音播完才返回；加载或播放失败返回 `false`。
+    pub fn play_sound(&self, file: &str) -> bool {
+        let Ok(path) = std::ffi::CString::new(file) else {
+            return false;
+        };
+        // SAFETY: path 以 NUL 结尾，生命周期覆盖本次调用。
+        unsafe { (self.play_sound)(path.as_ptr()) }
+    }
+}
+
 // --- Focus2.dll ---
 
 /// C 侧：`int focus(wchar_t* window_name, bool always_on_top)`。
@@ -557,6 +614,13 @@ lazy_library!(
     "全局 `Focus2.dll` 实例。"
 );
 
+lazy_library!(
+    audio_dll,
+    AudioDll,
+    AudioDll::load(),
+    "全局 `audio.dll` 实例。"
+);
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -577,6 +641,7 @@ mod tests {
         ScreenCapture::load().expect("ScreenCapture.dll 导出函数缺失");
         UploadFile::load().expect("uploadFile.dll 导出函数缺失");
         FocusQqWindow::load().expect("Focus2.dll 导出函数缺失");
+        AudioDll::load().expect("audio.dll 导出函数缺失");
     }
 
     /// `focus` 的 C 侧签名是 `int focus(wchar_t*, bool)`：空标题会被直接拒掉（返回 1）。
@@ -603,6 +668,23 @@ mod tests {
              重新编译 VisionQQ_C/FocusQQWindow2 再试"
         );
         assert_eq!(focus.focus("", false), 1, "同上");
+    }
+
+    /// `keyDown` / `keyUp` 可以单独调用（按住不放，再弹起）。
+    ///
+    /// 用 F24（`0x87`）——绝大多数键盘上没有这个键，注入后不会影响任何程序；
+    /// `press` 是"按下+弹起"一次，这两个则是分开的两步，用来按住修饰键。
+    #[test]
+    fn key_down_and_key_up_work() {
+        if find_dll("InputEvent.dll").is_err() {
+            eprintln!("跳过：当前目录没有 InputEvent.dll");
+            return;
+        }
+        let input = InputEvent::load().expect("InputEvent.dll 导出函数缺失");
+
+        const VK_F24: u16 = 0x87;
+        assert!(input.key_down(VK_F24), "keyDown(F24) 失败");
+        assert!(input.key_up(VK_F24), "keyUp(F24) 失败");
     }
 
     #[test]

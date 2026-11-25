@@ -88,6 +88,19 @@ pub fn drag_from_to_simple(x1: i32, y1: i32, x2: i32, y2: i32) {
     input.mouse_up();
 }
 
+pub fn mouse_down(x1: i32, y1: i32) {
+    let input = native::input_event();
+    mouse_move_selector(x1 as u32, y1 as u32);
+    thread::sleep(Duration::from_millis(100));
+    input.mouse_down();
+}
+
+pub fn mouse_up(x2: i32, y2: i32) {
+    let input = native::input_event();
+    mouse_move_selector(x2 as u32, y2 as u32);
+    thread::sleep(Duration::from_secs(config::get().scroll.max(0) as u64));
+    input.mouse_up();
+}
 // --- 键盘 ---
 
 pub fn press_key(key_name: &str) {
@@ -106,6 +119,40 @@ pub fn press_key(key_name: &str) {
     // );
     native::input_event().press(vk);
 }
+
+// pub fn key_down(key_name: &str) {
+//     let translate = localization::load();
+//     let vk = native::input_event().get_vk_key(&key_name.to_uppercase());
+//     if vk == 0 {
+//         log::error(format!(
+//             "{}: {key_name}",
+//             localization::get(&translate, "error.key.modifier")
+//         ));
+//     }
+//     // assert!(
+//     //     vk != 0,
+//     //     "{}: {key_name}",
+//     //     localization::get(&translate, "error.key.unknown")
+//     // );
+//     native::input_event().key_down(vk);
+// }
+
+// pub fn key_up(key_name: &str) {
+//     let translate = localization::load();
+//     let vk = native::input_event().get_vk_key(&key_name.to_uppercase());
+//     if vk == 0 {
+//         log::error(format!(
+//             "{}: {key_name}",
+//             localization::get(&translate, "error.key.modifier")
+//         ));
+//     }
+//     // assert!(
+//     //     vk != 0,
+//     //     "{}: {key_name}",
+//     //     localization::get(&translate, "error.key.unknown")
+//     // );
+//     native::input_event().key_up(vk);
+// }
 
 /// 对应 `GUIOperation.HotKey`。
 pub fn hot_key(modifier: &str, key: &str) {

@@ -4,6 +4,7 @@
 #![recursion_limit = "256"]
 
 mod answer;
+mod audio;
 mod chat_content;
 mod clipboard;
 mod config;
@@ -36,6 +37,7 @@ use positions::{PointI, RectI};
 use upload_content::UploadContent;
 // use windows_version::OsVersion;
 
+use crate::gui_operation::press_key;
 // use crate::cached_point::CachedPoint;
 use crate::sleep::ms_output;
 use crate::windows8::windows8;
@@ -192,7 +194,7 @@ fn main() {
         (settings.height as f32 * settings.scale) as i32,
     );
 
-    log::debug(format!("window size : {:?}",size));
+    log::debug(format!("window size : {:?}", size));
 
     // 聊天列表实际区域
     let chat_list = positions::to_actual_size(positions::CHAT_LIST_BBOX_RELATIVE_SIZE, size);
@@ -217,6 +219,12 @@ fn main() {
     let copy_button_possible =
         positions::to_actual_size(positions::COPY_BUTTON_POSSIBLE_BBOX_RELATIVE_SIZE, size);
 
+    //录音按钮和进入录音模式的按钮可能区域
+    let record_audio_possible =
+        positions::to_actual_size(positions::RECORD_AUDIO_POSSIBLE_BBOX_RELATIVE_SIZE, size);
+    let recording_audio_possible =
+        positions::to_actual_size(positions::RECORDING_AUDIO_POSSIBLE_BBOX_RELATIVE_SIZE, size);
+
     // SAFETY: 传入的是本文件里 'static 的合法处理函数。
     unsafe { SetConsoleCtrlHandler(Some(console_ctrl_handler), 1) };
 
@@ -235,17 +243,16 @@ fn main() {
         );
         let _ = std::io::stdout().flush();
 
-        let mut  contain = contains_red_dot(settings, chat_list, at_place);
+        let mut contain = contains_red_dot(settings, chat_list, at_place);
 
         if contain == (0, 0) {
             sleep::ms(2000);
             continue;
         }
 
-
         //防抖
         sleep::ms(500);
-        contain=contains_red_dot(settings, chat_list, at_place);
+        contain = contains_red_dot(settings, chat_list, at_place);
         if contain == (0, 0) {
             continue;
         }
@@ -271,7 +278,6 @@ fn main() {
 
         vision::screenshot(copy_button_possible);
 
-        
         sleep::ms(1000);
         // panic!("{:?}",copy_button_possible);
         clipboard::set_text("");
@@ -319,6 +325,8 @@ fn main() {
                 contact_button,
                 copy_button_possible,
                 upload_image_possible,
+                record_audio_possible,
+                recording_audio_possible,
                 settings.sleep,
             );
             continue;
@@ -337,6 +345,8 @@ fn main() {
                 contact_button,
                 copy_button_possible,
                 upload_image_possible,
+                record_audio_possible,
+                recording_audio_possible,
                 settings.sleep,
             );
 
@@ -356,7 +366,9 @@ fn main() {
             .get_answer(&chat_contents)
             .unwrap_or_else(|| UploadContent::text_only(""));
         let mut result = results.text.clone().unwrap_or_default();
-        let images_to_upload = results.absolute();
+        let images_to_upload = results.absolute_images();
+        let audios_to_upload = results.absolute_audios();
+        let files_to_upload = results.absolute_files();
         if result.chars().count() > settings.max_output.into() {
             result = result.chars().take(settings.max_output.into()).collect();
         }
@@ -376,13 +388,22 @@ fn main() {
 
         let result = result.trim().to_string();
         if result.replace("\n\n", "").is_empty() || result.is_empty() {
-            if !images_to_upload.is_empty() {
+            if results.has_attachments() {
                 log::warn(format!(
                     "{},{}",
                     localization::get(&translate, "warning.notgenerated"),
                     localization::get(&translate, "info.uploadgotimage")
                 ));
-                upload_got_image(&translate, upload_image_possible, images_to_upload);
+                upload_attachments(
+                    settings.scale,
+                    &translate,
+                    upload_image_possible,
+                    record_audio_possible,
+                    recording_audio_possible,
+                    &images_to_upload,
+                    &audios_to_upload,
+                    &files_to_upload,
+                );
             } else if settings.with_image && settings.send_image_possibility > 0 {
                 log::warn(format!(
                     "{},{}",
@@ -392,6 +413,7 @@ fn main() {
                 upload_image_without_send(upload_image_possible);
                 send::send_message();
                 sleep::ms(4000);
+                upload::escape();
                 log::print(localization::get(&translate, "info.quitconversation"));
             } else {
                 log::error(format!(
@@ -407,6 +429,8 @@ fn main() {
                 contact_button,
                 copy_button_possible,
                 upload_image_possible,
+                record_audio_possible,
+                recording_audio_possible,
                 settings.sleep,
             );
             continue;
@@ -417,8 +441,17 @@ fn main() {
         gui_operation::click_center(comment_section);
         gui_operation::send_text(&result, comment_section);
 
-        upload_got_image(&translate, upload_image_possible, images_to_upload);
-
+        upload_attachments(
+            settings.scale,
+            &translate,
+            upload_image_possible,
+            record_audio_possible,
+            recording_audio_possible,
+            &images_to_upload,
+            &audios_to_upload,
+            &files_to_upload,
+        );
+        sleep::ms(1000);
         let possibility = rand::random_range(0..100);
         // log::print(format!("概率:{possibility}"));
         if settings.with_image && possibility < settings.send_image_possibility {
@@ -440,6 +473,8 @@ fn main() {
             contact_button,
             copy_button_possible,
             upload_image_possible,
+            record_audio_possible,
+            recording_audio_possible,
             settings.sleep,
         );
     }
@@ -458,7 +493,7 @@ fn contains_red_dot(
     chat_list: (i32, i32, i32, i32),
     at_place: (i32, i32, i32, i32),
 ) -> (u32, u32) {
-    let mut contain=if settings.at_detect {
+    let mut contain = if settings.at_detect {
         // vision::screenshot(at_place);
         vision::screenshot(at_place);
         sleep::ms(200);
@@ -479,28 +514,120 @@ fn contains_red_dot(
             chat_list.3 - chat_list.1,
         )))
     };
-    if contain==(0,0)
-    {
-        return (0,0);
+    if contain == (0, 0) {
+        return (0, 0);
     }
-    contain.0+=(if settings.at_detect {at_place.0} else{chat_list.0}).abs() as u32; 
-    contain.1+=(if settings.at_detect {at_place.1} else{chat_list.1}).abs() as u32; 
+    contain.0 += (if settings.at_detect {
+        at_place.0
+    } else {
+        chat_list.0
+    })
+    .unsigned_abs();
+    contain.1 += (if settings.at_detect {
+        at_place.1
+    } else {
+        chat_list.1
+    })
+    .unsigned_abs();
     contain
 }
 
-fn upload_got_image(
+/// 把模型回复里带的附件逐个上传并发送
+/// 文件使用外部exe:UplaodFiles
+fn upload_attachments(
+    scale: f32,
     translate: &serde_json::Value,
-    upload_image_possible: (i32, i32, i32, i32),
-    images_to_upload: Vec<String>,
+    upload_image_possible: RectI,
+    record_audio_possible: RectI,
+    recording_audio_possible: RectI,
+    images: &[String],
+    audios: &[String],
+    files: &[String],
 ) {
-    for image in &images_to_upload {
+    //图片
+    for path in images {
         log::print(localization::get(translate, "info.uploadgotimage"));
-        upload::upload_selected_image(upload_image_possible, image);
+        upload::upload_selected_images(upload_image_possible, path);
         upload::escape();
         sleep::ms(500);
+        //图片额外需要发送一次消息
         send::send_message();
-        sleep::s(2);
+        sleep::ms(500);
     }
+
+    //文件（交给 UploadFiles.exe：它自己找"文件"按钮、填路径并回车发送）
+    if !files.is_empty() {
+        log::print(localization::get(translate, "info.uploadgotfile"));
+        if !upload::upload_files_by_exe(files) {
+            log::warn(localization::get(translate, "error.uploadfile.failed"));
+        }
+        sleep::ms(500);
+    }
+    //音频
+    //进入录音界面
+    //上传音频需要开启立体声混音。
+    log::print(localization::get(translate, "info.uploadgotaudio"));
+
+    vision::screenshot(record_audio_possible);
+    sleep::ms(500);
+
+    if let Ok(record_points) =
+        vision::find_templates(vision::SCREENSHOT_FILE, "./record.png", 30, 1)
+    {
+        if !record_points.is_empty() && (record_points[0].0 != 0 && record_points[0].1 != 0) {
+            log::print(format!("({},{})", record_points[0].0, record_points[0].1));
+            gui_operation::click(
+                (record_points[0].0 + record_audio_possible.0 as u32) as i32,
+                (record_points[0].1 + record_audio_possible.1 as u32) as i32,
+            );
+            sleep::ms(200);
+            vision::screenshot(recording_audio_possible);
+            sleep::ms(500);
+            if let Ok(recording_points) =
+                vision::find_templates(vision::SCREENSHOT_FILE, "./recording.png", 30, 1)
+            {
+                if !recording_points.is_empty()
+                // && (recording_points[0].0 != 0 && recording_points[0].1 != 0)
+                {
+                    let recording_pos_x =
+                        (recording_points[0].0 + recording_audio_possible.0 as u32 + (30.0  * scale) as u32) as i32;
+                    let recording_pos_y =
+                        (recording_points[0].1 + recording_audio_possible.1 as u32 + (30.0  * scale) as u32) as i32;
+                    log::print(format!("({},{})", recording_pos_x, recording_pos_y));
+                    // panic!("test");
+                    for path in audios {
+                        gui_operation::mouse_down(recording_pos_x, recording_pos_y);
+                        sleep::ms(1000);
+                        audio::play_blocking(path);
+                        gui_operation::mouse_up(recording_pos_x, recording_pos_y);
+                        sleep::ms(200);
+                    }
+
+                    //离开录音界面
+
+                    gui_operation::click(
+                        record_points[0].0.min(i32::MAX as u32) as i32 + record_audio_possible.0,
+                        record_points[0].1.min(i32::MAX as u32) as i32 + record_audio_possible.1,
+                    );
+
+                    sleep::ms(200);
+                    press_key("esc");
+                } else {
+                    log::warn(localization::get(translate, "error.matchtemplate.failed"));
+                    press_key("esc");
+                }
+            } else {
+                log::warn(localization::get(translate, "error.matchtemplate.failed"));
+                press_key("esc");
+            }
+        } else {
+            log::warn(localization::get(translate, "error.matchtemplate.failed"));
+        }
+    } else {
+        log::warn(localization::get(translate, "error.matchtemplate.failed"));
+    }
+
+    sleep::ms(500);
 }
 
 mod send;
@@ -549,6 +676,7 @@ fn upload_image_without_send(upload_image_possible: RectI) {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 /// 对应 `Program.GoBack`：确保已经退出会话。
 fn go_back(
     scale: f32,
@@ -556,6 +684,8 @@ fn go_back(
     _contact_button: PointI,
     copy_button_possible: RectI,
     upload_image_possible: RectI,
+    record_audio_possible: RectI,
+    recording_audio_possible: RectI,
     sleeps: u32,
 ) {
     let mut count = 0;
@@ -578,6 +708,22 @@ fn go_back(
                 .unwrap_or(vec![]);
         if !upload_points.is_empty() {
             log::print(format!("({},{})", upload_points[0].0, upload_points[0].1));
+            continue;
+        }
+
+        vision::screenshot(record_audio_possible);
+        let points = vision::find_templates(vision::SCREENSHOT_FILE, "./record.png", 30, 1)
+            .unwrap_or(vec![]);
+        if !points.is_empty() {
+            log::print(format!("({},{})", points[0].0, points[0].1));
+            continue;
+        }
+
+        vision::screenshot(recording_audio_possible);
+        let points = vision::find_templates(vision::SCREENSHOT_FILE, "./recording.png", 30, 1)
+            .unwrap_or(vec![]);
+        if !points.is_empty() {
+            log::print(format!("({},{})", points[0].0, points[0].1));
             continue;
         }
 
