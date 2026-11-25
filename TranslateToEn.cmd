@@ -1,0 +1,1 @@
+LocalTranslate2.py -t 英语 --output en-US.json zh-CN.json
