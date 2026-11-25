@@ -23,8 +23,7 @@ pub const DEFAULT_SIZE: (i32, i32) = (2240, 1260);
 pub const DEFAULT_SIZE2: (i32, i32) = (1280, 720);
 
 /// 基准分辨率。在150%缩放下截取的QQ窗口(1280,720)大小
-pub const DEFAULT_SIZE3: (i32, i32) = (1920,1080);
-
+pub const DEFAULT_SIZE3: (i32, i32) = (1920, 1080);
 
 // --- 绝对坐标（x1, y1, x2, y2）---
 

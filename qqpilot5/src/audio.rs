@@ -15,7 +15,6 @@ use crate::native;
 ///
 /// 注意：调用线程会被占住整段播放时间。需要边跑流程边放声音的话，
 /// 调用方自己 `std::thread::spawn` 一下即可（本模块只提供阻塞版本）。
-#[allow(dead_code)] // 预留给调用方（例如提示音），暂时还没有地方用它
 pub fn play_blocking(file: &str) -> bool {
     native::audio_dll().play_sound(file)
 }

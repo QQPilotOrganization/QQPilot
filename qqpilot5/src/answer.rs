@@ -493,9 +493,15 @@ fn collect_response(
     allow_remote: bool,
     client: &Client,
 ) -> Vec<String> {
-    if !allow_remote
-    {
-        return  vec![];
+    // `remote_*` 关掉时整类附件都不处理（不管是 url 还是 base64）。
+    // 这里必须打日志，否则界面上就是"什么都没收到"，分不清是服务端没给还是被跳过。
+    if !allow_remote {
+        let translate = localization::load();
+        log::info(format!(
+            "{}: remote_{kind}s",
+            localization::get(&translate, "info.remote.disabled")
+        ));
+        return Vec::new();
     }
     let Some(items) = document
         .pointer(&format!("/choices/0/message/{kind}s"))
@@ -525,13 +531,10 @@ fn collect_response(
             let preview: String = url.chars().take(50).collect();
             println!("{}: {preview}...", t(&format!("info.{kind}.dataurl")));
 
-            if is_remote(url) && !allow_remote {
-                log::warn(format!("{}: {preview}...", t("warning.remote.disabled")));
-            } else if let Some(path) = save_to_temp(url, kind, client) {
+            if let Some(path) = save_to_temp(url, kind, client) {
                 paths.push(path);
             }
         }
-
         if let Some(encoded) = item.get("b64_json").and_then(Value::as_str) {
             println!(
                 "{}: {}",
@@ -811,7 +814,6 @@ mod tests {
         let _ = answer.get_answer(&[chat]);
     }
 
-    /// 看真实服务商到底收到了什么请求体。
     ///
     /// `Answer` 会在发请求**之前**把请求体落盘成 `dest.json`，所以就算没有
     /// API key（请求必然失败）也能看到实际发出去的字段：

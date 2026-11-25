@@ -183,3 +183,24 @@ pub fn find_templates(
     // vision.match_end();
     Ok(results)
 }
+/// 在**当前截图**里找模板，成功时返回它在屏幕上的坐标（已加上截图区域的左上角）。
+///
+/// 截图必须先由调用方用 [`screenshot`] 拍好（本函数只做匹配 + 换算）。
+///
+/// `require_nonzero`：DLL 找不到时 `matchTemplateNext` 会返回 `(0,0)`，要求非零可以把
+/// "没找到"和"刚好命中截图左上角"区分开；有些整块区域的模板（比如录音界面）就该传
+/// `false`，因为 `(0,0)` 也可能是真的命中。
+pub fn find_template_point(
+    template_path: &str,
+    area: (i32, i32, i32, i32),
+    require_nonzero: bool,
+) -> Result<(i32, i32), String> {
+    let points = find_templates(SCREENSHOT_FILE, template_path, 30, 1)?;
+    let Some(&(x, y)) = points.first() else {
+        return Err(format!("截图里没找到 {template_path}"));
+    };
+    if require_nonzero && (x == 0 || y == 0) {
+        return Err(format!("截图里没找到 {template_path}（只拿到 (0,0)）"));
+    }
+    Ok((x as i32 + area.0, y as i32 + area.1))
+}

@@ -360,7 +360,8 @@ fn main() {
         );
 
         gui_operation::click_center(comment_section);
-
+        gui_operation::clear_input_section();
+        
         let model = answer_model.get_or_insert_with(Answer::new);
         let results = model
             .get_answer(&chat_contents)
@@ -389,10 +390,10 @@ fn main() {
         let result = result.trim().to_string();
         if result.replace("\n\n", "").is_empty() || result.is_empty() {
             if results.has_attachments() {
-                log::warn(format!(
+                log::info(format!(
                     "{},{}",
                     localization::get(&translate, "warning.notgenerated"),
-                    localization::get(&translate, "info.uploadgotimage")
+                    localization::get(&translate, "info.uploadgotmedia")
                 ));
                 upload_attachments(
                     settings.scale,
@@ -534,6 +535,8 @@ fn contains_red_dot(
 
 /// 把模型回复里带的附件逐个上传并发送
 /// 文件使用外部exe:UplaodFiles
+/// 依次上传一轮回复带的所有附件：图片 → 文件 → 音频。
+#[allow(clippy::too_many_arguments)]
 fn upload_attachments(
     scale: f32,
     translate: &serde_json::Value,
@@ -544,9 +547,12 @@ fn upload_attachments(
     audios: &[String],
     files: &[String],
 ) {
+    log::debug(format!("images:{:?}", images));
+    log::debug(format!("audios:{:?}", audios));
+    log::debug(format!("files:{:?}", files));
     //图片
     for path in images {
-        log::print(localization::get(translate, "info.uploadgotimage"));
+        log::print(localization::get(translate, "info.uploadgotmedia"));
         upload::upload_selected_images(upload_image_possible, path);
         upload::escape();
         sleep::ms(500);
@@ -563,73 +569,89 @@ fn upload_attachments(
         }
         sleep::ms(500);
     }
-    //音频
-    //进入录音界面
-    //上传音频需要开启立体声混音。
-    log::print(localization::get(translate, "info.uploadgotaudio"));
-
-    vision::screenshot(record_audio_possible);
-    sleep::ms(500);
-
-    if let Ok(record_points) =
-        vision::find_templates(vision::SCREENSHOT_FILE, "./record.png", 30, 1)
-    {
-        if !record_points.is_empty() && (record_points[0].0 != 0 && record_points[0].1 != 0) {
-            log::print(format!("({},{})", record_points[0].0, record_points[0].1));
-            gui_operation::click(
-                (record_points[0].0 + record_audio_possible.0 as u32) as i32,
-                (record_points[0].1 + record_audio_possible.1 as u32) as i32,
-            );
-            sleep::ms(200);
-            vision::screenshot(recording_audio_possible);
-            sleep::ms(500);
-            if let Ok(recording_points) =
-                vision::find_templates(vision::SCREENSHOT_FILE, "./recording.png", 30, 1)
-            {
-                if !recording_points.is_empty()
-                // && (recording_points[0].0 != 0 && recording_points[0].1 != 0)
-                {
-                    let recording_pos_x =
-                        (recording_points[0].0 + recording_audio_possible.0 as u32 + (30.0  * scale) as u32) as i32;
-                    let recording_pos_y =
-                        (recording_points[0].1 + recording_audio_possible.1 as u32 + (30.0  * scale) as u32) as i32;
-                    log::print(format!("({},{})", recording_pos_x, recording_pos_y));
-                    // panic!("test");
-                    for path in audios {
-                        gui_operation::mouse_down(recording_pos_x, recording_pos_y);
-                        sleep::ms(1000);
-                        audio::play_blocking(path);
-                        gui_operation::mouse_up(recording_pos_x, recording_pos_y);
-                        sleep::ms(200);
-                    }
-
-                    //离开录音界面
-
-                    gui_operation::click(
-                        record_points[0].0.min(i32::MAX as u32) as i32 + record_audio_possible.0,
-                        record_points[0].1.min(i32::MAX as u32) as i32 + record_audio_possible.1,
-                    );
-
-                    sleep::ms(200);
-                    press_key("esc");
-                } else {
-                    log::warn(localization::get(translate, "error.matchtemplate.failed"));
-                    press_key("esc");
-                }
-            } else {
-                log::warn(localization::get(translate, "error.matchtemplate.failed"));
-                press_key("esc");
-            }
-        } else {
-            log::warn(localization::get(translate, "error.matchtemplate.failed"));
+    //音频（需要先打开"立体声混音"，否则 QQ 录不到声音）
+    if !audios.is_empty() {
+        log::print(localization::get(translate, "info.uploadgotaudio"));
+        if let Err(error) = upload_audios(
+            scale,
+            record_audio_possible,
+            recording_audio_possible,
+            audios,
+        ) {
+            log::warn(format!(
+                "{}: {error}",
+                localization::get(translate, "error.uploadaudio.failed")
+            ));
         }
-    } else {
-        log::warn(localization::get(translate, "error.matchtemplate.failed"));
     }
-
     sleep::ms(500);
 }
 
+/// 把音频"录"进 QQ：点开录音界面 → 按住录音键逐个阻塞播放 wav → 退出录音界面。
+///
+/// 之前这里套了五层 `if let`，失败分支全是同一句"模板匹配失败 + 按 esc"；
+/// 现在拆成两个小函数，错误往上抛，收尾只有一个地方做。
+fn upload_audios(
+    scale: f32,
+    record_audio_possible: RectI,
+    recording_audio_possible: RectI,
+    audios: &[String],
+) -> Result<(), String> {
+    // 1. 找"录音"按钮 —— 这一步失败时还没进录音界面，不需要按 esc
+    vision::screenshot(record_audio_possible);
+    sleep::ms(500);
+    let (record_x, record_y) =
+        vision::find_template_point("./record.png", record_audio_possible, true)?;
+    log::print(format!("({record_x},{record_y})"));
+
+    // 2. 点开录音界面
+    gui_operation::click(record_x, record_y);
+    sleep::ms(200);
+
+    // 3. 界面里的操作；无论成功失败都要离开这个界面
+    let result = record_all_audios(scale, recording_audio_possible, audios);
+    if result.is_ok() {
+        // 正常路径：再点一次"录音"按钮退出，然后补一个 esc
+        gui_operation::click(record_x, record_y);
+        sleep::ms(200);
+    }
+    // 失败时界面可能停在半路，按 esc 兜底（正常路径也保留这个习惯）
+    press_key("esc");
+    result
+}
+
+/// [`upload_audios`] 里"已经在录音界面中"的那一步：找按住说话的按钮，逐个播完。
+fn record_all_audios(
+    scale: f32,
+    recording_audio_possible: RectI,
+    audios: &[String],
+) -> Result<(), String> {
+    vision::screenshot(recording_audio_possible);
+    sleep::ms(500);
+
+    // 这个模板不要求坐标非零：录音界面铺满整块区域，(0,0) 也可能真的是它
+    let (press_x, press_y) =
+        vision::find_template_point("./recording.png", recording_audio_possible, false)?;
+
+    // 模板左上角点下去会偏，往右下挪 30 个逻辑像素才落在"按住说话"中间
+    let press_x = (press_x as f32 + 30.0 * scale) as i32;
+    let press_y = (press_y as f32 + 30.0 * scale) as i32;
+    log::print(format!("({press_x},{press_y})"));
+
+    for path in audios {
+        // 按住录音键 -> 阻塞播放（播完才松手）-> 松手
+        gui_operation::mouse_down(press_x, press_y);
+        sleep::ms(1000);
+        let played = audio::play_blocking(path);
+        gui_operation::mouse_up(press_x, press_y);
+        sleep::ms(200);
+
+        if !played {
+            return Err(format!("播放失败: {path}"));
+        }
+    }
+    Ok(())
+}
 mod send;
 
 /// 从 exe 目录下的 `Images` 里挑一张图上传。

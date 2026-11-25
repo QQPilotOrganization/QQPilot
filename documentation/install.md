@@ -65,6 +65,8 @@ ollama pull minicpm-v4.7:1b
 
 并打开 `设置` 配置。
 ![alt text](../assets/option2.png)
+
+
 #### [各配置项用法](options.md)
 
 
@@ -87,4 +89,18 @@ ollama pull minicpm-v4.7:1b
 
 正常运行时应该如下
 ![alt text](../assets/running.png)
+
+### *开启音频功能
+QQPilot依赖于虚拟麦克风，将系统内声音转入麦克风实现音频输入。
+一般情况下，可以使用**windows立体声混音**实现
+
+Windows 11(右键右下角声音图标 -> 声音设置 -> 更多声音设置 -> 录制) Windows 10 / 8.1(右键右下角声音图标 -> 录音设备)-> 立体声混音 -> 双击后 设置"设备用法" 使用此设备(启用) -> 侦听 -> **关闭侦听此设备**
+
+在QQ设置里,将麦克风设置为**立体声混音(Stereo Mix)**
+![alt text](image-3.png)
+
+使用时可以关闭声音。
+
+#### Windows 11
+请确定已经打开麦克风使用权限。
 

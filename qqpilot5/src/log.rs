@@ -136,6 +136,10 @@ pub fn print(message: impl AsRef<str>) {
 }
 
 /// 对应 `Log.Print(target, Log.Stat.WARN)`。
+pub fn info(message: impl AsRef<str>) {
+    print_with(message, Level::Normal);
+}
+/// 对应 `Log.Print(target, Log.Stat.WARN)`。
 pub fn warn(message: impl AsRef<str>) {
     print_with(message, Level::Warn);
 }
@@ -189,11 +193,12 @@ mod tests {
     fn write_and_remove_old_file() {
         let mut f = LOG.lock().unwrap();
         std::fs::remove_file("log.txt").unwrap_or(());
-        for o in 0..10000 {
-            if let Err(e) = write!(
-                f,
-                "{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}{o}"
-            ) {
+        // 每行 ~8KB，写 100 行就是 800KB，足够越过 512KB 的轮转阈值。
+        // （原来是一行一行挤 170 字节写一万次：百万级的小写调用在这台机器上要跑 40 多秒，
+        //   换成少数几次大写入，轮转逻辑照样被测到，时间降到毫秒级。）
+        let line = "0123456789abcdef".repeat(512);
+        for o in 0..100 {
+            if let Err(e) = writeln!(f, "{o}{line}") {
                 eprintln!("Log:{e}");
             }
         }
