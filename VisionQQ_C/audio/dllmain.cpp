@@ -23,7 +23,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 
 
 
-constexpr auto maxLength_s = 59;
+constexpr auto maxLength_s = 60;
 //播放wav，结束后返回。
 extern "C" __declspec(dllexport)
 bool playSound2(const char* file)
