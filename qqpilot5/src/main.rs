@@ -222,9 +222,11 @@ fn main() {
     //录音按钮和进入录音模式的按钮可能区域
     let record_audio_possible =
         positions::to_actual_size(positions::RECORD_AUDIO_POSSIBLE_BBOX_RELATIVE_SIZE, size);
-    let recording_audio_possible =
-        positions::to_actual_size(positions::RECORDING_AUDIO_POSSIBLE_BBOX_RELATIVE_SIZE, size);
 
+    let _qq_window_size = positions::to_actual_size((0.0, 0.0, 1.0, 1.0), size);
+    let recording_audio_possible =
+    //qq_window_size;
+    positions::to_actual_size(positions::RECORDING_AUDIO_POSSIBLE_BBOX_RELATIVE_SIZE, size);
     // SAFETY: 传入的是本文件里 'static 的合法处理函数。
     unsafe { SetConsoleCtrlHandler(Some(console_ctrl_handler), 1) };
 
@@ -320,14 +322,12 @@ fn main() {
             ));
             spinner::stop();
             go_back(
-                settings.scale,
+                settings,
                 chat_button,
                 contact_button,
                 copy_button_possible,
                 upload_image_possible,
-                record_audio_possible,
                 recording_audio_possible,
-                settings.sleep,
             );
             continue;
         }
@@ -340,14 +340,12 @@ fn main() {
             ));
             spinner::stop();
             go_back(
-                settings.scale,
+                settings,
                 chat_button,
                 contact_button,
                 copy_button_possible,
                 upload_image_possible,
-                record_audio_possible,
                 recording_audio_possible,
-                settings.sleep,
             );
 
             continue;
@@ -361,7 +359,7 @@ fn main() {
 
         gui_operation::click_center(comment_section);
         gui_operation::clear_input_section();
-        
+
         let model = answer_model.get_or_insert_with(Answer::new);
         let results = model
             .get_answer(&chat_contents)
@@ -425,14 +423,12 @@ fn main() {
             }
 
             go_back(
-                settings.scale,
+                settings,
                 chat_button,
                 contact_button,
                 copy_button_possible,
                 upload_image_possible,
-                record_audio_possible,
                 recording_audio_possible,
-                settings.sleep,
             );
             continue;
         }
@@ -469,14 +465,12 @@ fn main() {
 
         gui_operation::clear_input_section();
         go_back(
-            settings.scale,
+            settings,
             chat_button,
             contact_button,
             copy_button_possible,
             upload_image_possible,
-            record_audio_possible,
             recording_audio_possible,
-            settings.sleep,
         );
     }
 
@@ -600,10 +594,10 @@ fn upload_audios(
     // 1. 找"录音"按钮 —— 这一步失败时还没进录音界面，不需要按 esc
     vision::screenshot(record_audio_possible);
     sleep::ms(500);
+
     let (record_x, record_y) =
         vision::find_template_point("./record.png", record_audio_possible, true)?;
     log::print(format!("({record_x},{record_y})"));
-
     // 2. 点开录音界面
     gui_operation::click(record_x, record_y);
     sleep::ms(200);
@@ -701,20 +695,18 @@ fn upload_image_without_send(upload_image_possible: RectI) {
 #[allow(clippy::too_many_arguments)]
 /// 对应 `Program.GoBack`：确保已经退出会话。
 fn go_back(
-    scale: f32,
+    settings: &config::Config,
     chat_button: PointI,
     _contact_button: PointI,
     copy_button_possible: RectI,
     upload_image_possible: RectI,
-    record_audio_possible: RectI,
     recording_audio_possible: RectI,
-    sleeps: u32,
 ) {
     let mut count = 0;
     loop {
         gui_operation::click(
-            chat_button.0 + (100.0 * scale) as i32,
-            chat_button.1 + (80.0 * scale) as i32,
+            chat_button.0 + (100.0 * settings.scale) as i32,
+            chat_button.1 + (80.0 * settings.scale) as i32,
         );
         sleep::ms(3000);
 
@@ -732,23 +724,16 @@ fn go_back(
             log::print(format!("({},{})", upload_points[0].0, upload_points[0].1));
             continue;
         }
+        if settings.remote_audios {
 
-        vision::screenshot(record_audio_possible);
-        let points = vision::find_templates(vision::SCREENSHOT_FILE, "./record.png", 30, 1)
-            .unwrap_or(vec![]);
-        if !points.is_empty() {
-            log::print(format!("({},{})", points[0].0, points[0].1));
-            continue;
+            vision::screenshot(recording_audio_possible);
+            let points = vision::find_templates(vision::SCREENSHOT_FILE, "./recording.png", 30, 1)
+                .unwrap_or(vec![]);
+            if !points.is_empty() {
+                log::print(format!("({},{})", points[0].0, points[0].1));
+                continue;
+            }
         }
-
-        vision::screenshot(recording_audio_possible);
-        let points = vision::find_templates(vision::SCREENSHOT_FILE, "./recording.png", 30, 1)
-            .unwrap_or(vec![]);
-        if !points.is_empty() {
-            log::print(format!("({},{})", points[0].0, points[0].1));
-            continue;
-        }
-
         vision::screenshot(copy_button_possible);
         sleep::ms(1500);
         let copy_points =
@@ -760,5 +745,5 @@ fn go_back(
 
         break;
     }
-    ms_output((sleeps * 1000) as u64);
+    ms_output((settings.sleep * 1000) as u64);
 }
