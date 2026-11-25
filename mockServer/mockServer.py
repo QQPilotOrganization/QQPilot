@@ -427,7 +427,7 @@ class MockHandler(BaseHTTPRequestHandler):
                 for kind in ("image", "audio", "file")
             }
             detail = f"附件 image={counts['image']} audio={counts['audio']} file={counts['file']}"
-
+        print(payload)
         self._send_json(payload)
         self._log(f"200 {path}  模式={self.args.mode}  {detail}")
 
