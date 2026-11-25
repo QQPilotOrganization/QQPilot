@@ -24,7 +24,7 @@ rust项目通过`bundle-licenses`得到所有许可证。
 [Vision](./VisionQQ_C/Vision)|C++|颜色查找与模板匹配  ~~时间换空间~~ |
 [Clocalization](./VisionQQ_C/Clocalization)|C++|C++程序使用的本地化的 **C++** dll库|
 [ClocalizationTest](./VisionQQ_C/ClocalizationTest)|C++|[Clocalization](./VisionQQ_C/Clocalization)测试|
-[**UploadFiles**](./VisionQQ_C/UploadFiles)|C++|**使用cli上传文件，模拟点击上传文件按钮并上传。应与具有电脑操控权限的Agent使用。目前不附带在正式版中。**|
+[**UploadFiles**](./VisionQQ_C/UploadFiles)|C++|使用cli上传文件，模拟点击上传文件按钮并上传。|
 [get_chat_name](./get_chat_name)|rust|**使用WindowsOCR（Windows 10 1507+ )读取当前聊天名称。应与具有电脑操控权限的Agent使用。目前不附带在正式版中。**|
 [get_chat_name2](./get_chat_name2)|rust|**使用需要配置的远程ChatCompletion API的OCR提供商运行OCR读取当前聊天名称。支持Windows 8.1+。应与具有电脑操控权限的Agent使用。目前不附带在正式版中。**|
 [saltfile](./VisionQQ_C/saltfile)|C++|在文件后增加一串时间相关的后缀以修改散列。目前不附带在正式版中。

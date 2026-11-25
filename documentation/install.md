@@ -22,9 +22,12 @@
  - 前往 [Releases 页面](https://github.com/Na2Cr2O7/QQPilot/releases) 下载最新压缩包并解压。
  解压后大小<6M.
 
+
  - 1.5.19以下的版本， 确保已经安装[.NET10](https://dotnet.microsoft.com/en-us/download/dotnet/thank-you/sdk-10.0.203-windows-x64-installer)。
 
- 
+ - 你可以下载附加组件(`DLC.7z`)
+    - get_chat_name :使用WindowsOCR（Windows 10 1507+ 读取当前聊天名称。应与具有电脑操控权限的Agent使用。
+    - get_chat_name2:使用需要配置的远程ChatCompletion API的OCR提供商运行OCR读取当前聊天名称。支持Windows 8.1+。应与具有电脑操控权限的Agent使用。
 
  - 安装[QQ](https://im.qq.com/index/#/)
 
