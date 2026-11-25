@@ -125,3 +125,71 @@ bool hotKey(WORD modifier, WORD vkKey)
     setKeyEvent(inputs[3], modifier, true); // mod up
     return SendInput(4, inputs, sizeof(INPUT)) == 4;
 }
+
+extern "C" __declspec(dllexport)
+bool hold(WORD vkKey, float second)
+{
+    INPUT inputs[1] = {};
+    setKeyEvent(inputs[0], vkKey);      // key down
+    if (not SendInput(1, inputs, sizeof(INPUT)) == 1)
+    {
+        return false;
+    }
+
+    Sleep(second*1000);
+
+    INPUT inputs2[1] = {};
+    setKeyEvent(inputs2[0], vkKey, true); // key up
+    return SendInput(1, inputs2, sizeof(INPUT)) == 1;
+}
+
+
+extern "C" __declspec(dllexport)
+bool holdHotKey(WORD modifier, WORD vkKey, float second)
+{
+    INPUT inputs[4] = {};
+    setKeyEvent(inputs[0], modifier);      // mod down
+    setKeyEvent(inputs[1], vkKey);         // key down
+    if (not SendInput(2, inputs, sizeof(INPUT)) == 2)
+    {
+        return false;
+    }
+    Sleep(second * 1000);
+
+    setKeyEvent(inputs[2], vkKey, true);   // key up
+    setKeyEvent(inputs[3], modifier, true); // mod up
+    return SendInput(2, inputs+2, sizeof(INPUT)) == 2;
+}
+
+extern "C" __declspec(dllexport)
+bool keyDown(WORD vkKey)
+{
+    INPUT inputs[1] = {};
+    setKeyEvent(inputs[0], vkKey);      // key down
+    return  SendInput(1, inputs, sizeof(INPUT)) == 1;
+}
+
+extern "C" __declspec(dllexport)
+bool keyUp(WORD vkKey)
+{
+    INPUT inputs[1] = {};
+    setKeyEvent(inputs[0], vkKey, true);      // key up
+    return  SendInput(1, inputs, sizeof(INPUT)) == 1;
+}
+
+
+extern "C" __declspec(dllexport)
+bool hotKeyDown(WORD modifier, WORD vkKey)
+{
+    auto a = keyDown(modifier);
+    auto b = keyDown(vkKey);
+    return (a and b);
+}
+
+extern "C" __declspec(dllexport)
+bool hotKeyUp(WORD modifier, WORD vkKey)
+{
+    auto a = keyUp(modifier);
+    auto b = keyUp(vkKey);
+    return (a and b);
+}
