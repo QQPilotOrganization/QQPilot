@@ -23,7 +23,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 
 
 
-constexpr auto maxLength_s = 60;
+constexpr std::chrono::seconds timeout_duration = std::chrono::seconds(60);
 //播放wav，结束后返回。
 extern "C" __declspec(dllexport)
 bool playSound2(const char* file)
@@ -49,14 +49,14 @@ bool playSound2(const char* file)
 
     ma_sound_start(&sound);
 
-    unsigned count = 0;
+    auto start_time = std::chrono::steady_clock::now();
+   
     // 阻塞等待，直到声音播完
     while (ma_sound_at_end(&sound) == 0) {
         Sleep(20);
-        count += 20;
-        if (count >= (maxLength_s * 1000))
-        {
-            break;
+        auto elapsed = std::chrono::steady_clock::now() - start_time;
+        if (elapsed >= timeout_duration) {
+            break; 
         }
 
     }
