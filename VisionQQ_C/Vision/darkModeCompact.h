@@ -8,10 +8,6 @@
 #include"stbImage.h"
 #include<cassert>
 
-/// 深色模式下 QQ 的主背景色（#222222）。
-extern "C" __declspec(dllexport)
-const Color DARK_MODE_MOST_COLOR = { 34, 34, 34, 255 };
-
 /// 取整张图里出现次数最多的颜色；`resize` 是采样比例（0~1，超出范围按 1 处理）。
 extern "C" __declspec(dllexport)
 Color getMostColor(const char* imagePath, float resize);

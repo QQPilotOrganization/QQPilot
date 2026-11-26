@@ -90,12 +90,10 @@ Point contains(RECT rect, const Color& color, const char* path)
 
 	if (rect.bottom < 0 or rect.right < 0 or rect.left < 0 or rect.top < 0)
 	{
-		std::cout << 1;
 		goto end;
 	}
 	if (rect.bottom > img_h or rect.right > img_w or rect.left > img_w or rect.top > img_h)
 	{
-		std::cout << 2;
 		goto end;
 	}
 
@@ -155,12 +153,6 @@ static SimdBackend detectSimdBackend() {
 }
 
 static const SimdBackend g_simd = detectSimdBackend();
-
-/// 当前实际使用的 SIMD 后端：0=标量 1=SSE2 2=AVX2（诊断用，老 CPU 上会返回 1 或 0）。
-EXPORT
-int visionSimdBackend() {
-	return static_cast<int>(g_simd);
-}
 
 static inline long long sadRowScalar(const unsigned char* a, const unsigned char* b, int bytes) {
 	long long total = 0;
@@ -318,37 +310,6 @@ int matchTemplatesSelectedScaleBegin(const char* imagePath, const char* template
 	return MatchTemplateByFactors(numFactors, factors, originalTplObj, template_w, template_h, img_w, img_h, template_channels, imgObj, tolerance, count);
 }
 
-EXPORT
-int matchTemplatesMultiScaleBegin(const char* imagePath, const char* templatePath, int tolerance, int count)
-{
-	revelants.clear(); // 清空全局结果列表
-
-	const float factors[] = { 1.0f,1.25f,1.5f,1.75f,2.0f,2.25f,2.5f,2.75f,3.0f, 1.1f, 1.2f, 1.3f, 1.4f, 1.6f, 1.7f, 1.8f, 1.9f };
-	const int numFactors = sizeof(factors) / sizeof(factors[0]);
-
-	// 1. 加载大图 (只加载一次)
-	int img_w, img_h, img_channels;
-	StbiImage image_data = stbiLoad(imagePath, &img_w, &img_h, &img_channels, 4);
-	if (!image_data) {
-		return -2;
-	}
-	img_channels = 4;
-
-	// 2. 加载原始模板 (只加载一次)
-	int template_w, template_h, template_channels;
-	StbiImage template_data = stbiLoad(templatePath, &template_w, &template_h, &template_channels, 4);
-	if (!template_data) {
-		return -3;
-	}
-	template_channels = 4;
-
-	PackedImage imgObj = { image_data.get(), img_w, img_h, img_channels };
-	PackedImage originalTplObj = { template_data.get(), template_w, template_h, template_channels };
-
-	// 3. 多尺度循环（两块内存由上面的 StbiImage 负责释放）
-	return MatchTemplateByFactors(numFactors, factors, originalTplObj, template_w, template_h, img_w, img_h, template_channels, imgObj, tolerance, count);
-}
-
 /// 自定义倍数表的多尺度匹配：大图和模板只加载一次，按 scales 的顺序逐个匹配，
 /// 凑够 count 个（或全部试完）就返回。用于「在 dScale 附近试 7 个倍数」这类场景，
 /// 不必每个倍数都重新解码一遍截图。
@@ -479,40 +440,6 @@ static void _matchTemplate(const PackedImage& imgObj, const PackedImage& tplObj,
 			}
 		}
 	}
-}
-EXPORT
-int matchTemplatesBegin(const char* imagePath, const char* templatePath, int tolerance, int count)
-{
-	revelants.clear();
-
-	// 1. 加载大图
-	int img_w, img_h, img_channels;
-	StbiImage image_data = stbiLoad(imagePath, &img_w, &img_h, &img_channels, 4);
-	img_channels = 4;
-	if (!image_data) {
-		return -2; // 大图加载失败
-	}
-
-	// 2. 加载模板图
-	int template_w, template_h, template_channels;
-	StbiImage template_data = stbiLoad(templatePath, &template_w, &template_h, &template_channels, 4);
-	template_channels = 4;
-	if (!template_data) {
-		return -3; // 模板加载失败
-	}
-
-	// 3. 基础检查
-	if (img_w < template_w || img_h < template_h) {
-		return -1; // 尺寸不够
-	}
-	PackedImage imgObj = { image_data.get(), img_w, img_h, img_channels };
-	PackedImage tplObj = { template_data.get(), template_w, template_h, template_channels };
-
-	_matchTemplate(imgObj, tplObj, tolerance, count, revelants);
-
-	// 4. 两块图像内存在这里随 StbiImage 析构释放
-
-	return static_cast<int>(revelants.size());
 }
 
 EXPORT

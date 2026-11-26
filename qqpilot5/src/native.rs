@@ -244,8 +244,6 @@ impl InputEvent {
 type ContainsRedDotFn = unsafe extern "C" fn(Rect, *const std::ffi::c_char) -> Point;
 type ContainsBlueFn = unsafe extern "C" fn(*const std::ffi::c_char) -> Point;
 type RectFn = unsafe extern "C" fn(u32, u32, u32, u32) -> Rect;
-type MatchBeginFn =
-    unsafe extern "C" fn(*const std::ffi::c_char, *const std::ffi::c_char, i32, i32) -> i32;
 type MatchBeginScaledFn =
     unsafe extern "C" fn(*const std::ffi::c_char, *const std::ffi::c_char, i32, i32, f32) -> i32;
 type MatchScalesBeginFn = unsafe extern "C" fn(
@@ -266,7 +264,6 @@ pub struct VisionDll {
     contains_red_dot: ContainsRedDotFn,
     contains_blue: ContainsBlueFn,
     rect: RectFn,
-    match_multi_scale_begin: MatchBeginFn,
     match_selected_scale_begin: MatchBeginScaledFn,
     match_scales_begin: MatchScalesBeginFn,
     match_next: MatchNextFn,
@@ -285,11 +282,6 @@ impl VisionDll {
                 contains_red_dot: load_fn(&lib, "Vision.dll", "containsRedDot")?,
                 contains_blue: load_fn(&lib, "Vision.dll", "containsBlue")?,
                 rect: load_fn(&lib, "Vision.dll", "rect")?,
-                match_multi_scale_begin: load_fn(
-                    &lib,
-                    "Vision.dll",
-                    "matchTemplatesMultiScaleBegin",
-                )?,
                 match_selected_scale_begin: load_fn(
                     &lib,
                     "Vision.dll",
@@ -327,27 +319,6 @@ impl VisionDll {
     pub fn rect(&self, x: u32, y: u32, width: u32, height: u32) -> Rect {
         // SAFETY: 纯值构造，无指针参数。
         unsafe { (self.rect)(x, y, width, height) }
-    }
-
-    /// 对应 `NativeMethods.matchTemplatesMultiScaleBegin`。
-    #[allow(dead_code)]
-    pub fn match_multi_scale_begin(
-        &self,
-        image_path: &str,
-        template_path: &str,
-        tolerance: i32,
-        max_count: i32,
-    ) -> i32 {
-        let (Ok(image), Ok(template)) = (
-            std::ffi::CString::new(image_path),
-            std::ffi::CString::new(template_path),
-        ) else {
-            return -2;
-        };
-        // SAFETY: 两个 C 字符串的生命周期覆盖本次调用。
-        unsafe {
-            (self.match_multi_scale_begin)(image.as_ptr(), template.as_ptr(), tolerance, max_count)
-        }
     }
 
     /// 对应 `NativeMethods.matchTemplatesSelectedScaleBegin`。

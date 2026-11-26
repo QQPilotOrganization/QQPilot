@@ -129,7 +129,10 @@ fn adapt_dark_mode(image_path: &str) -> bool {
     true
 }
 
-/// 对应 `Vision.FindTemplates`：先试 `dScale` 邻域，不够再退回多尺度全扫。
+/// 对应 `Vision.FindTemplates`：在 `dScale` 邻域的若干个倍数上找模板。
+///
+/// 以前这里还会在没找到时退回 17 个倍数的全扫，实测太慢而且基本用不上，已经去掉；
+/// 现在只有「`dScale` 附近 7 个倍数」这一次搜索（DLL 内部一次载图试完）。
 pub fn find_templates(
     image_path: &str,
     template_path: &str,
@@ -139,34 +142,7 @@ pub fn find_templates(
     // 深色模式下先把截图反色回来（模板是浅色模式截的）。
     adapt_dark_mode(image_path);
 
-    let results =
-        find_templates_by_nearing_d_scale(image_path, template_path, tolerance, max_count)?;
-    // if results.len() >= max_count.max(0) as usize {
-    //     return Ok(results);
-    // }
-
-    // let vision = native::vision_dll();
-    // let count = vision.match_multi_scale_begin(image_path, template_path, tolerance, max_count);
-    // if count < 0 {
-    //     vision.match_end();
-    //     return Err(error_message(count, image_path, template_path));
-    // }
-
-    // let limit = if max_count > 0 {
-    //     max_count as usize
-    // } else {
-    //     usize::MAX
-    // };
-    // let mut results = results;
-    // for index in 0..count {
-    //     let Point { x, y } = vision.match_next(index);
-    //     results.push((x, y));
-    //     if results.len() >= limit {
-    //         break;
-    //     }
-    // }
-    // vision.match_end();
-    Ok(results)
+    find_templates_by_nearing_d_scale(image_path, template_path, tolerance, max_count)
 }
 /// 在**当前截图**里找模板，成功时返回它在屏幕上的坐标（已加上截图区域的左上角）。
 ///
