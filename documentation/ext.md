@@ -7,8 +7,10 @@ QQPilot向外暴露Chat Completion接口，一般通过拦截并修改请求实�
 #### [qqpilot-dsh-plugin](https://github.com/QQPilotOrganization/qqpilot-dsh-plugin)
 把 QQPilot 的 QQ 消息接入 DeepSeek Harness（DSH）的桥接插件。
 
-#### [CompletionConnector-For-QQPilot](https://github.com/QQPilotOrganization/CompletionConnector-For-QQPilot)
-将 QQPilot Chat Completion API 与 OneBot v11 协议 双向翻译的桥接服务。(不支持Maibot)
+<!-- #### [CompletionConnector-For-QQPilot](https://github.com/QQPilotOrganization/CompletionConnector-For-QQPilot)
+将 QQPilot Chat Completion API 与 OneBot v11 协议 双向翻译的桥接服务。(不支持Maibot) -->
+#### [QQPilot-EasyAudio](https://github.com/QQPilotOrganization/QQPilot-EasyAudio)
+ Chat Completion 中转 + TTS 响应改写器。(1.5.21+)
 
 #### [QQPilotAdapterForMaiBot](https://github.com/QQPilotOrganization/QQPilotAdapterForMaiBot)
 把 QQPilot 的 OpenAI ChatCompletion 请求接入 MaiBot 的第三方适配器。

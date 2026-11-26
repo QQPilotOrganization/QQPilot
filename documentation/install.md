@@ -93,7 +93,7 @@ ollama pull minicpm-v4.7:1b
 正常运行时应该如下
 ![alt text](../assets/running.png)
 
-### *开启音频功能
+### *开启音频功能 (可选，不开启无法上传音频)
 QQPilot依赖于虚拟麦克风，将系统内声音转入麦克风实现音频输入。
 一般情况下，可以使用**windows立体声混音**实现
 
@@ -106,4 +106,6 @@ Windows 11(右键右下角声音图标 -> 声音设置 -> 更多声音设置 -> 
 
 #### Windows 11
 请确定已经打开麦克风使用权限。
+
+如果不存在**立体声混音**设备，可以使用[https://vb-audio.com/Cable/](https://vb-audio.com/Cable/) 免费
 

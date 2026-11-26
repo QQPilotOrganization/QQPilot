@@ -11,6 +11,7 @@ rust项目通过`bundle-licenses`得到所有许可证。
 |-|-|-|
 [option3](./option3)|**rust**|设置的GUI界面|
 [qqpilot5](./qqpilot5)|**rust**|QQPilot的核心|
+[Audio](./VisionQQ_C/audio)|C++|mp3 / wav / flac 播放 用于音频上传|
 [ImageImport](./VisionQQ_C/ImageImport)|C++|导入图片工具|
 [Focus2](./VisionQQ_C/FocusQQWindow2)|C++|置顶QQ窗口并移动到左上角|
 [InfoRunning2](./VisionQQ_C/InfoRunning2)|C++|右下角显示运行时浮窗|
@@ -35,6 +36,7 @@ rust项目通过`bundle-licenses`得到所有许可证。
 
 <summary>saltfile</summary>
 
+``` bash / pwsh / cmd / powershell / sh
 copy 1.jpg 2.jpg
 Overwrite 2.jpg? (Yes/No/All): Yes
         1 file(s) copied.
@@ -57,6 +59,7 @@ certutil -hashfile 2.jpg SHA256
 SHA256 hash of 2.jpg:
 acc59ac2d00ef857e4cc125932e4c59d122080acbddad8c7985e79aa020111dc
 CertUtil: -hashfile command completed successfully.
+```
 
 </details>
 
