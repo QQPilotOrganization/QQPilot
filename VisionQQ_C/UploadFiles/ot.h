@@ -32,6 +32,12 @@ typedef int(__cdecl* PFN_getVkKey)(const char* key);
 typedef int(__cdecl* PFN_matchTemplatesSelectedScaleBegin)(
     const char* imagePath, const char* templatePath,
     int tolerance, int count, float scale);
+// 一次调用试完整张倍数表：大图只解码一遍，凑够 count 就停（新 DLL 才有）
+typedef int(__cdecl* PFN_matchTemplatesScalesBegin)(
+    const char* imagePath, const char* templatePath,
+    int tolerance, int count, const float* scales, int numScales);
+// 最近一次匹配实际用的倍数（新 DLL 才有）
+typedef float(__cdecl* PFN_matchTemplateHitScale)();
 typedef Point(__cdecl* PFN_matchTemplateNext)(int subscript);
 typedef void(__cdecl* PFN_matchTemplateEnd)();
 

@@ -34,4 +34,5 @@ EXPORT int matchTemplatesBegin(const char* imagePath, const char* templatePath, 
 EXPORT int matchTemplatesScalesBegin(const char* imagePath, const char* templatePath, int tolerance, int count, const float* scales, int numScales);
 EXPORT Point matchTemplateNext(int subscript);
 EXPORT void matchTemplateEnd();
+EXPORT float matchTemplateHitScale();
 EXPORT int visionSimdBackend();

@@ -69,6 +69,8 @@ struct VisionApi
 {
 	HMODULE h = nullptr;
 	PFN_matchTemplatesSelectedScaleBegin matchTemplatesSelectedScaleBegin = nullptr;
+	PFN_matchTemplatesScalesBegin		 matchTemplatesScalesBegin = nullptr;
+	PFN_matchTemplateHitScale			 matchTemplateHitScale = nullptr;
 	PFN_matchTemplateNext                matchTemplateNext = nullptr;
 	PFN_matchTemplateEnd                 matchTemplateEnd = nullptr;
 	PFN_getMostColor					 getMostColor = nullptr;
@@ -78,11 +80,15 @@ struct VisionApi
 	{
 		h = LoadLibraryW(dll);
 		if (!h) return false;
-		return Bind(h, "matchTemplatesSelectedScaleBegin", matchTemplatesSelectedScaleBegin)
+		const bool required = Bind(h, "matchTemplatesSelectedScaleBegin", matchTemplatesSelectedScaleBegin)
 			and Bind(h, "matchTemplateNext", matchTemplateNext)
 			and Bind(h, "matchTemplateEnd", matchTemplateEnd)
 			and Bind(h, "inverted", inverted)
 			and Bind(h, "getMostColor", getMostColor);
+		// 这两个是新 DLL 才有的，老 DLL 上留空，调用处会退回逐个倍数匹配
+		Bind(h, "matchTemplatesScalesBegin", matchTemplatesScalesBegin);
+		Bind(h, "matchTemplateHitScale", matchTemplateHitScale);
+		return required;
 	}
 	VisionApi() = default;
 	VisionApi(const
@@ -364,32 +370,67 @@ static bool find_file_icon(
 	int tolerance,
 	Hit& hit, const VisionApi& vision)
 {
-	std::vector<float> scales{ preferred_scale, preferred_scale - 0.1f, preferred_scale + 0.1f };
-
-	const std::string image = screenshot.string();
-	const std::string templ = template_image.string();
-
-	std::vector<float> tried;
-	for (const float scale : scales)
+	// 候选倍数：去重、丢掉太小/非正的
+	std::vector<float> scales;
+	for (const float scale : { preferred_scale, preferred_scale - 0.1f, preferred_scale + 0.1f })
 	{
 		if (scale < 0.05f)
 		{
 			continue;
 		}
 		const bool duplicated = std::any_of(
-			tried.begin(), tried.end(), [scale](float value) { return std::fabs(value - scale) < 0.001f; });
-		if (duplicated)
+			scales.begin(), scales.end(), [scale](float value) { return std::fabs(value - scale) < 0.001f; });
+		if (!duplicated)
 		{
-			continue;
+			scales.push_back(scale);
 		}
-		tried.push_back(scale);
+	}
+	if (scales.empty())
+	{
+		return false;
+	}
 
-		Color c = vision.getMostColor(SCREENSHOT_FILE, 0.1f);
-		if (c.r == DARK_MODE_MOST_COLOR.r and c.g == DARK_MODE_MOST_COLOR.g and c.b == DARK_MODE_MOST_COLOR.b)
+	const std::string image = screenshot.string();
+	const std::string templ = template_image.string();
+
+	// 深色模式先反色一次（以前放在循环里，每试一个倍数都要重新统计一遍主色）
+	const Color most = vision.getMostColor(image.c_str(), 0.1f);
+	if (most.r == DARK_MODE_MOST_COLOR.r and most.g == DARK_MODE_MOST_COLOR.g and
+		most.b == DARK_MODE_MOST_COLOR.b)
+	{
+		vision.inverted(image.c_str());
+	}
+
+	// 新 DLL：一次调用把整张倍数表试完，截图只解码一遍
+	if (vision.matchTemplatesScalesBegin != nullptr)
+	{
+		const int count = vision.matchTemplatesScalesBegin(
+			image.c_str(), templ.c_str(), tolerance, 1, scales.data(), static_cast<int>(scales.size()));
+		if (count < 0)
 		{
-			vision.inverted(SCREENSHOT_FILE);
+			vision.matchTemplateEnd();
+			std::cerr << "错误: 模板匹配加载失败（" << count << "）: 截图 " << image
+				<< " / 模板 " << templ << std::endl;
+			return false;
+		}
+		if (count == 0)
+		{
+			vision.matchTemplateEnd();
+			return false;
 		}
 
+		const Point point = vision.matchTemplateNext(0);
+		const float matched = vision.matchTemplateHitScale != nullptr ? vision.matchTemplateHitScale() : preferred_scale;
+		vision.matchTemplateEnd();
+		hit.x = static_cast<int>(point.x);
+		hit.y = static_cast<int>(point.y);
+		hit.scale = matched > 0.0f ? matched : preferred_scale;
+		return true;
+	}
+
+	// 老 DLL 退路：逐个倍数调用（每次都会重新解码截图）
+	for (const float scale : scales)
+	{
 		const int count =
 			vision.matchTemplatesSelectedScaleBegin(image.c_str(), templ.c_str(), tolerance, 1, scale);
 		if (count < 0)

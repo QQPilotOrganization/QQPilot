@@ -118,6 +118,8 @@ end:
 	return{ 0,0 };
 }
 static std::vector<Point> revelants;
+/// 最近一次产生结果的倍数（多尺度匹配用；单尺度时就是传进去的 scale）。
+static float g_lastMatchScale = 0.0f;
 
 // ==========================================================================
 // 内层 SAD（一行像素的绝对差之和）：
@@ -424,6 +426,9 @@ static int MatchTemplateByFactors(const int numFactors, const float factors[], P
 		std::vector<Point> newMatches;
 
 		_matchTemplate(imgObj, currentTplObj, tolerance, count, newMatches);
+		if (!newMatches.empty()) {
+			g_lastMatchScale = factor;
+		}
 		if (newMatches.size() >= count)
 		{
 			std::copy(newMatches.begin(), newMatches.end(), std::back_inserter(revelants));
@@ -520,6 +525,13 @@ Point matchTemplateNext(int subscript)
 		return invalid;
 	}
 	return revelants[subscript];
+}
+
+/// 最近一次匹配实际用的倍数。多尺度调用后用它算模板中心，(0 表示还没匹配过)
+EXPORT
+float matchTemplateHitScale()
+{
+	return g_lastMatchScale;
 }
 
 EXPORT
