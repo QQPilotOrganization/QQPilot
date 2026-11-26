@@ -20,7 +20,7 @@
 
 
  - 前往 [Releases 页面](https://github.com/Na2Cr2O7/QQPilot/releases) 下载最新压缩包并解压。
- 解压后大小<6M.
+ 解压后大小<10M.
 
 
  - 1.5.19以下的版本， 确保已经安装[.NET10](https://dotnet.microsoft.com/en-us/download/dotnet/thank-you/sdk-10.0.203-windows-x64-installer)。
