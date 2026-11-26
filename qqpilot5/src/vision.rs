@@ -68,17 +68,21 @@ fn error_message(code: i32, image_path: &str, template_path: &str) -> String {
     }
 }
 
-/// 单次指定缩放的匹配，对应 `NativeMethods.matchTemplatesSelectedScaleBegin` 那段逻辑。
-fn match_at_scale(
+/// 对应 `Vision.FindTemplatesByNearingDScale`：在 `dScale` 附近的若干个缩放上依次尝试。
+///
+/// 7 个倍数一次性交给 DLL：截图只解码一遍，DLL 内部按顺序试、凑够 `max_count` 就停。
+/// （以前是每个倍数调一次 `matchTemplatesSelectedScaleBegin`，同一张截图要解码 7 遍。）
+pub fn find_templates_by_nearing_d_scale(
     image_path: &str,
     template_path: &str,
     tolerance: i32,
     max_count: i32,
-    scale: f32,
 ) -> Result<Vec<(u32, u32)>, String> {
+    let d = d_scale();
+    let scales = [d, d - 0.1, d - 0.2, d + 0.1, d + 0.2, d - 0.05, d + 0.05];
+
     let vision = native::vision_dll();
-    let count =
-        vision.match_selected_scale_begin(image_path, template_path, tolerance, max_count, scale);
+    let count = vision.match_scales_begin(image_path, template_path, tolerance, max_count, &scales);
     if count < 0 {
         vision.match_end();
         return Err(error_message(count, image_path, template_path));
@@ -98,25 +102,6 @@ fn match_at_scale(
         }
     }
     vision.match_end();
-    Ok(results)
-}
-
-/// 对应 `Vision.FindTemplatesByNearingDScale`：在 `dScale` 附近的若干个缩放上依次尝试。
-pub fn find_templates_by_nearing_d_scale(
-    image_path: &str,
-    template_path: &str,
-    tolerance: i32,
-    max_count: i32,
-) -> Result<Vec<(u32, u32)>, String> {
-    let d = d_scale();
-    let mut results = Vec::new();
-    for scale in [d, d - 0.1, d - 0.2, d + 0.1, d + 0.2, d - 0.05, d + 0.05] {
-        let found = match_at_scale(image_path, template_path, tolerance, max_count, scale)?;
-        results.extend(found);
-        if results.len() >= max_count.max(0) as usize {
-            break;
-        }
-    }
     Ok(results)
 }
 
@@ -203,4 +188,20 @@ pub fn find_template_point(
         return Err(format!("截图里没找到 {template_path}（只拿到 (0,0)）"));
     }
     Ok((x as i32 + area.0, y as i32 + area.1))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// 仓库根目录里就有 `screenshot.png` 和模板，顺便验证新的「一次载图试多个倍数」接口。
+    #[test]
+    fn match_scales_api_finds_record_icon() {
+        let vision = native::vision_dll();
+        let count = vision.match_scales_begin("screenshot.png", "record.png", 30, 1, &[1.0]);
+        assert!(count >= 1, "应至少命中 1 个，实际 {count}");
+        let Point { x, y } = vision.match_next(0);
+        vision.match_end();
+        assert_eq!((x, y), (118, 5));
+    }
 }

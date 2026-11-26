@@ -31,5 +31,7 @@ struct PackedImage
 	int width, height, channels;
 };
 EXPORT int matchTemplatesBegin(const char* imagePath, const char* templatePath, int tolerance, int count);
+EXPORT int matchTemplatesScalesBegin(const char* imagePath, const char* templatePath, int tolerance, int count, const float* scales, int numScales);
 EXPORT Point matchTemplateNext(int subscript);
 EXPORT void matchTemplateEnd();
+EXPORT int visionSimdBackend();

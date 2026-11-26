@@ -248,6 +248,14 @@ type MatchBeginFn =
     unsafe extern "C" fn(*const std::ffi::c_char, *const std::ffi::c_char, i32, i32) -> i32;
 type MatchBeginScaledFn =
     unsafe extern "C" fn(*const std::ffi::c_char, *const std::ffi::c_char, i32, i32, f32) -> i32;
+type MatchScalesBeginFn = unsafe extern "C" fn(
+    *const std::ffi::c_char,
+    *const std::ffi::c_char,
+    i32,
+    i32,
+    *const f32,
+    i32,
+) -> i32;
 type MatchNextFn = unsafe extern "C" fn(i32) -> Point;
 type MatchEndFn = unsafe extern "C" fn();
 type GetMostColorFn = unsafe extern "C" fn(*const std::ffi::c_char, f32) -> Color;
@@ -260,6 +268,7 @@ pub struct VisionDll {
     rect: RectFn,
     match_multi_scale_begin: MatchBeginFn,
     match_selected_scale_begin: MatchBeginScaledFn,
+    match_scales_begin: MatchScalesBeginFn,
     match_next: MatchNextFn,
     match_end: MatchEndFn,
     get_most_color: GetMostColorFn,
@@ -286,6 +295,7 @@ impl VisionDll {
                     "Vision.dll",
                     "matchTemplatesSelectedScaleBegin",
                 )?,
+                match_scales_begin: load_fn(&lib, "Vision.dll", "matchTemplatesScalesBegin")?,
                 match_next: load_fn(&lib, "Vision.dll", "matchTemplateNext")?,
                 match_end: load_fn(&lib, "Vision.dll", "matchTemplateEnd")?,
                 get_most_color: load_fn(&lib, "Vision.dll", "getMostColor")?,
@@ -341,6 +351,7 @@ impl VisionDll {
     }
 
     /// 对应 `NativeMethods.matchTemplatesSelectedScaleBegin`。
+    #[allow(dead_code)] // 单尺度调试用；正常匹配走 `match_scales_begin`（一次载图试多个倍数）
     pub fn match_selected_scale_begin(
         &self,
         image_path: &str,
@@ -363,6 +374,39 @@ impl VisionDll {
                 tolerance,
                 max_count,
                 scale,
+            )
+        }
+    }
+
+    /// 对应 `NativeMethods.matchTemplatesScalesBegin`：一次调用试完整张倍数表。
+    ///
+    /// 大图只解码一遍；按 `scales` 的顺序依次匹配，凑够 `max_count` 个就停。
+    pub fn match_scales_begin(
+        &self,
+        image_path: &str,
+        template_path: &str,
+        tolerance: i32,
+        max_count: i32,
+        scales: &[f32],
+    ) -> i32 {
+        let (Ok(image), Ok(template)) = (
+            std::ffi::CString::new(image_path),
+            std::ffi::CString::new(template_path),
+        ) else {
+            return -2;
+        };
+        if scales.is_empty() || scales.len() > i32::MAX as usize {
+            return -4;
+        }
+        // SAFETY: 两个 C 字符串 + 切片指针的生命周期都覆盖本次调用，`scales.len()` 与指针配套。
+        unsafe {
+            (self.match_scales_begin)(
+                image.as_ptr(),
+                template.as_ptr(),
+                tolerance,
+                max_count,
+                scales.as_ptr(),
+                scales.len() as i32,
             )
         }
     }

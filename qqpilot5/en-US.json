@@ -47,7 +47,7 @@
   "info.file.baselength": "Base64 length",
   "info.file.saved": "The file has been saved to",
   "info.saved": "Saved to",
-  "warning.remote.disabled": "The corresponding remote_* switch is off, this attachment type is skipped",
+  "info.remote.disabled": "The corresponding remote_* switch is off, this attachment type is skipped",
   "error.download.failed": "Download failed",
   "error.uploadfile.failed": "Uploading files with UploadFiles.exe failed",
   "error.uploadaudio.failed": "Uploading audio failed",

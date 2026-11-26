@@ -48,7 +48,7 @@
     "info.file.baselength": "Base64 长度",
     "info.file.saved": "文件已保存到",
     "info.saved": "已保存到",
-    "warning.remote.disabled": "对应的 remote_* 开关没开，已跳过这类附件",
+    "info.remote.disabled": "对应的 remote_* 选项未启用，已跳过这类附件",
     "error.download.failed": "下载失败",
     "error.uploadfile.failed": "用 UploadFiles.exe 上传文件失败",
     "error.uploadaudio.failed": "上传音频失败",
