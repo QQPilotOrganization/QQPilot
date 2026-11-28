@@ -62,8 +62,9 @@
 
 如遇问题，欢迎提交 Issue。
 
-本项目(不包括第三方库)采用 [The Unlicense](LICENSE)
+本项目(不包括第三方库和数据集)采用 [The Unlicense](LICENSE)。
 
+数据集 [沐雪（中文角色扮演）训练集](https://modelscope.cn/datasets/Moemuu/Muice-Dataset)使用 CC-BY-NC-4.0 开源许可证协议进行公开。QQPilot永久免费。如果基于源码修改发布，修改为付费模式，需要向[原作者](https://modelscope.cn/profile/Moemuu)取得商业授权或者更换数据集。
 
 <details>
 <summary>联系</summary>
